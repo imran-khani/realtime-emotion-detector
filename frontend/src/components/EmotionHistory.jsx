@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 
 const EmotionHistory = ({ history }) => {
-  const timelineRef = useRef(null);
+  const listRef = useRef(null);
 
   useEffect(() => {
     // Auto-scroll to the latest emotion
-    if (timelineRef.current) {
-      timelineRef.current.scrollLeft = timelineRef.current.scrollWidth;
+    if (listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [history]);
 
@@ -25,42 +25,49 @@ const EmotionHistory = ({ history }) => {
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], { 
       hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit'
+      minute: '2-digit'
     });
   };
 
-  return (
-    <div className="mt-6 bg-white rounded-lg shadow-md p-4">
-      <h2 className="text-xl font-semibold mb-4">Emotion Timeline</h2>
-      
-      <div 
-        ref={timelineRef}
-        className="flex gap-2 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
-      >
-        {history.map((item, index) => (
-          <div 
-            key={item.timestamp} 
-            className="flex-shrink-0 flex flex-col items-center"
-          >
-            <div className={`w-4 h-4 rounded-full ${getEmotionColor(item.emotion)}`} />
-            {index % 2 === 0 && (
-              <div className="mt-1 text-xs text-gray-500">
-                {formatTime(item.timestamp)}
-              </div>
-            )}
-            <div className="text-sm capitalize mt-1">
-              {item.emotion}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {history.length === 0 && (
-        <div className="text-center text-gray-500 py-4">
+  if (history.length === 0) {
+    return (
+      <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg p-4">
+        <h2 className="text-xl font-semibold mb-4 dark:text-white">Emotion History</h2>
+        <div className="text-center text-gray-500 dark:text-gray-400 py-4">
           No emotion history yet
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg p-4">
+      <h2 className="text-xl font-semibold mb-4 dark:text-white">Emotion History</h2>
+      
+      <div 
+        ref={listRef}
+        className="overflow-y-auto max-h-[300px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-700 pr-2"
+      >
+        <div className="space-y-2">
+          {history.map((item) => (
+            <div 
+              key={item.timestamp}
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
+            >
+              <div className={`w-2.5 h-2.5 rounded-full ${getEmotionColor(item.emotion)}`} />
+              <div className="text-sm capitalize text-gray-700 dark:text-gray-300 flex-1">
+                {item.emotion}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {formatTime(item.timestamp)}
+              </div>
+              <div className="text-xs text-gray-400 dark:text-gray-500">
+                {(item.confidence * 100).toFixed(0)}%
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
