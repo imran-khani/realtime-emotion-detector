@@ -2,6 +2,12 @@ import { useRef, useCallback, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
 import * as faceapi from 'face-api.js';
 
+const MODELS_URLS = [
+  'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights',
+  'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights',
+  '/models'
+];
+
 const WebcamCapture = ({ 
   onEmotionDetected,
   detectionFrequency = 2000,
@@ -16,26 +22,55 @@ const WebcamCapture = ({
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [showDetectionBox, setShowDetectionBox] = useState(true);
   const [showLandmarks, setShowLandmarks] = useState(false);
+  const [showAgeGender, setShowAgeGender] = useState(false);
+  const [showMesh, setShowMesh] = useState(false);
+  const [showExpressions, setShowExpressions] = useState(true);
   const [detectionSensitivity, setDetectionSensitivity] = useState(0.5);
-  const [selectedRegion, setSelectedRegion] = useState(null);
-  const [isDrawingRegion, setIsDrawingRegion] = useState(false);
-  const [showExpressionBars, setShowExpressionBars] = useState(false);
 
   // Load face-api models
   useEffect(() => {
     const loadModels = async () => {
       try {
         setIsLoading(true);
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-          faceapi.nets.faceExpressionNet.loadFromUri('/models'),
-          faceapi.nets.faceLandmark68Net.loadFromUri('/models'), // For facial landmarks
-          faceapi.nets.faceRecognitionNet.loadFromUri('/models') // For better accuracy
-        ]);
-        setIsModelLoaded(true);
+        
+        // Configure model loading
+        faceapi.env.monkeyPatch({
+          Canvas: HTMLCanvasElement,
+          Image: HTMLImageElement,
+          ImageData: ImageData,
+          Video: HTMLVideoElement,
+          createCanvasElement: () => document.createElement('canvas'),
+          createImageElement: () => document.createElement('img')
+        });
+
+        // Try loading models from different URLs
+        let lastError = null;
+        for (const modelUrl of MODELS_URLS) {
+          try {
+            console.log(`Attempting to load models from ${modelUrl}...`);
+            
+            await Promise.all([
+              faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
+              faceapi.nets.faceExpressionNet.loadFromUri(modelUrl),
+              faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
+              faceapi.nets.ageGenderNet.loadFromUri(modelUrl)
+            ]);
+
+            console.log(`Successfully loaded models from ${modelUrl}`);
+            setIsModelLoaded(true);
+            setError(null);
+            return; // Success, exit the loop
+          } catch (err) {
+            console.error(`Failed to load from ${modelUrl}:`, err);
+            lastError = err;
+          }
+        }
+
+        // If we get here, all URLs failed
+        throw lastError || new Error('Failed to load models from all sources');
       } catch (err) {
         console.error('Error loading models:', err);
-        setError('Failed to load emotion detection models');
+        setError(`Failed to load models. Please check your internet connection and try refreshing the page.`);
       } finally {
         setIsLoading(false);
       }
@@ -57,53 +92,121 @@ const WebcamCapture = ({
     }
   }, []);
 
-  const drawDetections = (detections, canvas) => {
+  const drawDetections = async (detections, canvas) => {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (showDetectionBox && detections) {
-      // Draw face detection box
+    // Draw face detection box
+    if (showDetectionBox) {
+      const box = detections.detection.box;
       ctx.strokeStyle = '#00ff00';
       ctx.lineWidth = 2;
-      ctx.strokeRect(
-        detections.detection.box.x,
-        detections.detection.box.y,
-        detections.detection.box.width,
-        detections.detection.box.height
-      );
+      ctx.strokeRect(box.x, box.y, box.width, box.height);
     }
 
-    if (showLandmarks && detections.landmarks) {
-      // Draw facial landmarks
-      const points = detections.landmarks.positions;
+    // Draw facial landmarks
+    if (showLandmarks) {
+      const landmarks = detections.landmarks;
       ctx.fillStyle = '#00ff00';
-      points.forEach(point => {
+      landmarks.positions.forEach(point => {
         ctx.beginPath();
         ctx.arc(point.x, point.y, 2, 0, 2 * Math.PI);
         ctx.fill();
       });
     }
 
-    if (showExpressionBars && detections.expressions) {
-      // Draw expression confidence bars
+    // Draw face mesh
+    if (showMesh) {
+      const mesh = detections.landmarks;
+      ctx.strokeStyle = '#00ff00';
+      ctx.lineWidth = 1;
+
+      // Draw lines between landmarks
+      const drawLine = (point1, point2) => {
+        ctx.beginPath();
+        ctx.moveTo(point1.x, point1.y);
+        ctx.lineTo(point2.x, point2.y);
+        ctx.stroke();
+      };
+
+      // Connect jaw points
+      for (let i = 0; i < 16; i++) {
+        drawLine(mesh.positions[i], mesh.positions[i + 1]);
+      }
+
+      // Connect nose points
+      for (let i = 27; i < 35; i++) {
+        drawLine(mesh.positions[i], mesh.positions[i + 1]);
+      }
+
+      // Connect eyes
+      for (let i = 36; i < 41; i++) {
+        drawLine(mesh.positions[i], mesh.positions[i + 1]);
+      }
+      drawLine(mesh.positions[41], mesh.positions[36]);
+
+      for (let i = 42; i < 47; i++) {
+        drawLine(mesh.positions[i], mesh.positions[i + 1]);
+      }
+      drawLine(mesh.positions[47], mesh.positions[42]);
+
+      // Connect mouth
+      for (let i = 48; i < 59; i++) {
+        drawLine(mesh.positions[i], mesh.positions[i + 1]);
+      }
+      drawLine(mesh.positions[59], mesh.positions[48]);
+
+      for (let i = 60; i < 67; i++) {
+        drawLine(mesh.positions[i], mesh.positions[i + 1]);
+      }
+      drawLine(mesh.positions[67], mesh.positions[60]);
+    }
+
+    // Draw expressions
+    if (showExpressions) {
       const expressions = detections.expressions;
       const barWidth = 100;
       const barHeight = 10;
       let startY = 10;
 
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(10, startY - 5, 200, Object.keys(expressions).length * 20 + 10);
+
       Object.entries(expressions).forEach(([expression, confidence]) => {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.fillRect(10, startY, barWidth, barHeight);
+        // Background bar
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.fillRect(15, startY, barWidth, barHeight);
         
+        // Confidence bar
         ctx.fillStyle = '#00ff00';
-        ctx.fillRect(10, startY, barWidth * confidence, barHeight);
+        ctx.fillRect(15, startY, barWidth * confidence, barHeight);
         
+        // Label
         ctx.fillStyle = '#ffffff';
         ctx.font = '12px Arial';
         ctx.fillText(`${expression}: ${(confidence * 100).toFixed(0)}%`, 120, startY + 8);
         
         startY += 20;
       });
+    }
+
+    // Draw age and gender
+    if (showAgeGender && detections.age && detections.gender) {
+      const { age, gender, genderProbability } = detections;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(detections.detection.box.x - 10, detections.detection.box.y - 50, 200, 40);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '16px Arial';
+      ctx.fillText(
+        `${Math.round(age)} years old`,
+        detections.detection.box.x,
+        detections.detection.box.y - 30
+      );
+      ctx.fillText(
+        `${gender} (${(genderProbability * 100).toFixed(1)}%)`,
+        detections.detection.box.x,
+        detections.detection.box.y - 10
+      );
     }
   };
 
@@ -126,28 +229,13 @@ const WebcamCapture = ({
       const detections = await faceapi
         .detectSingleFace(video, detectionOptions)
         .withFaceLandmarks()
-        .withFaceExpressions();
+        .withFaceExpressions()
+        .withAgeAndGender();
 
       if (detections) {
         // Draw detections on canvas
         if (canvasRef.current) {
-          drawDetections(detections, canvasRef.current);
-        }
-
-        // Check if detection is within selected region (if any)
-        if (selectedRegion) {
-          const box = detections.detection.box;
-          const isInRegion = (
-            box.x >= selectedRegion.x &&
-            box.y >= selectedRegion.y &&
-            (box.x + box.width) <= (selectedRegion.x + selectedRegion.width) &&
-            (box.y + box.height) <= (selectedRegion.y + selectedRegion.height)
-          );
-          
-          if (!isInRegion) {
-            onEmotionDetected({ emotion: 'unknown', confidence: 0 });
-            return;
-          }
+          await drawDetections(detections, canvasRef.current);
         }
 
         // Map face-api expressions to our emotion format
@@ -166,15 +254,17 @@ const WebcamCapture = ({
         const [emotion, confidence] = Object.entries(emotionMap)
           .reduce((prev, curr) => curr[1] > prev[1] ? curr : prev);
 
-        // Calculate average emotion stability over time
-        // Add additional metadata to the emotion detection
+        // Send detection data to parent
         onEmotionDetected({ 
           emotion, 
           confidence,
           timestamp: Date.now(),
           expressions: detections.expressions,
-          box: detections.detection.box,
-          landmarks: showLandmarks ? detections.landmarks.positions : null
+          age: detections.age,
+          gender: detections.gender,
+          genderProbability: detections.genderProbability,
+          landmarks: showLandmarks ? detections.landmarks.positions : null,
+          box: detections.detection.box
         });
       } else {
         onEmotionDetected({ emotion: 'unknown', confidence: 0 });
@@ -185,7 +275,7 @@ const WebcamCapture = ({
     } finally {
       setIsLoading(false);
     }
-  }, [onEmotionDetected, isLoading, isModelLoaded, detectionSensitivity, selectedRegion, showLandmarks]);
+  }, [onEmotionDetected, isLoading, isModelLoaded, detectionSensitivity, showLandmarks]);
 
   useEffect(() => {
     if (isAutoDetecting && isModelLoaded) {
@@ -203,28 +293,6 @@ const WebcamCapture = ({
       }
     }
   }, [captureImage, detectionFrequency, isAutoDetecting, isModelLoaded]);
-
-  // Handle region selection
-  const handleCanvasClick = useCallback((e) => {
-    if (!isDrawingRegion) return;
-
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    if (!selectedRegion) {
-      setSelectedRegion({ x, y, width: 0, height: 0 });
-    } else {
-      setSelectedRegion({
-        x: Math.min(x, selectedRegion.x),
-        y: Math.min(y, selectedRegion.y),
-        width: Math.abs(x - selectedRegion.x),
-        height: Math.abs(y - selectedRegion.y)
-      });
-      setIsDrawingRegion(false);
-    }
-  }, [isDrawingRegion, selectedRegion]);
 
   if (!hasWebcamPermission) {
     return (
@@ -253,7 +321,6 @@ const WebcamCapture = ({
         <canvas
           ref={canvasRef}
           className="absolute top-0 left-0 w-full h-full"
-          onClick={handleCanvasClick}
         />
       </div>
 
@@ -265,7 +332,7 @@ const WebcamCapture = ({
             showDetectionBox ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
           }`}
         >
-          Detection Box
+          Face Box
         </button>
         <button
           onClick={() => setShowLandmarks(prev => !prev)}
@@ -273,26 +340,31 @@ const WebcamCapture = ({
             showLandmarks ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
           }`}
         >
-          Facial Landmarks
+          Landmarks
         </button>
         <button
-          onClick={() => setShowExpressionBars(prev => !prev)}
+          onClick={() => setShowMesh(prev => !prev)}
           className={`px-3 py-1 rounded-md text-sm ${
-            showExpressionBars ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
+            showMesh ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
           }`}
         >
-          Expression Bars
+          Face Mesh
         </button>
         <button
-          onClick={() => {
-            setIsDrawingRegion(true);
-            setSelectedRegion(null);
-          }}
+          onClick={() => setShowExpressions(prev => !prev)}
           className={`px-3 py-1 rounded-md text-sm ${
-            isDrawingRegion ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
+            showExpressions ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
           }`}
         >
-          Select Region
+          Expressions
+        </button>
+        <button
+          onClick={() => setShowAgeGender(prev => !prev)}
+          className={`px-3 py-1 rounded-md text-sm ${
+            showAgeGender ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
+          }`}
+        >
+          Age/Gender
         </button>
       </div>
 
@@ -342,7 +414,7 @@ const WebcamCapture = ({
       {!isModelLoaded && !error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 rounded-lg">
           <div className="text-white text-center">
-            <p className="text-lg font-semibold mb-2">Loading emotion detection models...</p>
+            <p className="text-lg font-semibold mb-2">Loading detection models...</p>
             <p className="text-sm opacity-80">This may take a few moments</p>
           </div>
         </div>
