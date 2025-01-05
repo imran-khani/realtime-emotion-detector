@@ -4,13 +4,36 @@ A real-time facial emotion detection application that runs entirely in your brow
 
 ## Features
 
-- Real-time facial emotion detection
-- Client-side processing using face-api.js
+### Core Features
+- Real-time facial emotion detection using face-api.js
+- Client-side processing for instant results
 - Five-emotion classification (happy, sad, angry, surprised, neutral)
+- Complete privacy - all processing happens locally
+
+### User Interface
 - Dark/Light theme support
-- Emotion history tracking and analytics
-- Downloadable emotion history
-- No backend required - runs entirely in your browser
+- Responsive design for all devices
+- Live webcam preview
+- Real-time emotion feedback
+- Clean, modern interface
+
+### Analytics & Data
+- Comprehensive emotion history tracking
+- Visual emotion trends and patterns
+- Downloadable history in JSON format
+- Real-time statistics and analysis
+
+### Customization
+- Adjustable detection frequency
+- Toggleable auto-detection mode
+- Customizable interface preferences
+- Manual capture option
+
+### Technical Benefits
+- No installation required
+- No backend dependency
+- Works offline after initial load
+- Fast and responsive performance
 
 ## How It Works
 

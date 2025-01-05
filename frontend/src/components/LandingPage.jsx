@@ -34,6 +34,9 @@ const LandingPage = ({ onStartDemo }) => {
 
       {/* Features Section */}
       <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white text-center mb-12">
+          Comprehensive Feature Set
+        </h2>
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
           <Feature
             icon="⚡"
@@ -65,6 +68,36 @@ const LandingPage = ({ onStartDemo }) => {
             title="Data Export"
             description="Save your emotion history locally for personal analysis."
           />
+          <Feature
+            icon="🌓"
+            title="Dark/Light Theme"
+            description="Customizable interface that adapts to your preferred viewing mode."
+          />
+          <Feature
+            icon="⚙️"
+            title="Adjustable Settings"
+            description="Customize detection frequency and automatic detection preferences."
+          />
+          <Feature
+            icon="📈"
+            title="Emotion Trends"
+            description="Visual representation of your emotional patterns over time."
+          />
+          <Feature
+            icon="🎥"
+            title="Live Preview"
+            description="Real-time webcam feed with instant emotion feedback."
+          />
+          <Feature
+            icon="📱"
+            title="Responsive Design"
+            description="Optimized for both desktop and mobile devices."
+          />
+          <Feature
+            icon="🔄"
+            title="Auto-Detection"
+            description="Toggle between automatic and manual emotion detection modes."
+          />
         </div>
       </div>
 
@@ -76,9 +109,9 @@ const LandingPage = ({ onStartDemo }) => {
           </h2>
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             <TechItem
-              src="https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/assets/logo.png"
-              alt="face-api.js"
+              icon="🤖"
               name="face-api.js"
+              isIcon={true}
             />
             <TechItem
               src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg"
@@ -103,16 +136,20 @@ const LandingPage = ({ onStartDemo }) => {
 };
 
 const Feature = ({ icon, title, description }) => (
-  <div className="relative p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+  <div className="relative p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow hover:scale-105 duration-300">
     <div className="text-4xl mb-4">{icon}</div>
     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
     <p className="text-gray-600 dark:text-gray-400">{description}</p>
   </div>
 );
 
-const TechItem = ({ src, alt, name }) => (
+const TechItem = ({ src, alt, name, icon, isIcon }) => (
   <div className="flex flex-col items-center">
-    <img src={src} alt={alt} className="h-12 object-contain dark:invert" />
+    {isIcon ? (
+      <div className="text-4xl mb-2">{icon}</div>
+    ) : (
+      <img src={src} alt={alt} className="h-12 object-contain dark:invert" />
+    )}
     <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{name}</p>
   </div>
 );
