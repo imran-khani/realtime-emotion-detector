@@ -37,67 +37,138 @@ const LandingPage = ({ onStartDemo }) => {
         <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white text-center mb-12">
           Comprehensive Feature Set
         </h2>
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          <Feature
-            icon="⚡"
-            title="Client-side Processing"
-            description="All emotion detection runs directly in your browser for instant results."
-          />
-          <Feature
-            icon="🔒"
-            title="Complete Privacy"
-            description="No server communication needed - your data never leaves your device."
-          />
-          <Feature
-            icon="📊"
-            title="Real-time Analytics"
-            description="Track emotional patterns and trends with live updates and statistics."
-          />
-          <Feature
-            icon="🎯"
-            title="High Accuracy"
-            description="Powered by face-api.js, using advanced neural networks for reliable detection."
-          />
-          <Feature
-            icon="📱"
-            title="No Installation"
-            description="Works instantly in your browser - no downloads or setup required."
-          />
-          <Feature
-            icon="💾"
-            title="Data Export"
-            description="Save your emotion history locally for personal analysis."
-          />
-          <Feature
-            icon="🌓"
-            title="Dark/Light Theme"
-            description="Customizable interface that adapts to your preferred viewing mode."
-          />
-          <Feature
-            icon="⚙️"
-            title="Adjustable Settings"
-            description="Customize detection frequency and automatic detection preferences."
-          />
-          <Feature
-            icon="📈"
-            title="Emotion Trends"
-            description="Visual representation of your emotional patterns over time."
-          />
-          <Feature
-            icon="🎥"
-            title="Live Preview"
-            description="Real-time webcam feed with instant emotion feedback."
-          />
-          <Feature
-            icon="📱"
-            title="Responsive Design"
-            description="Optimized for both desktop and mobile devices."
-          />
-          <Feature
-            icon="🔄"
-            title="Auto-Detection"
-            description="Toggle between automatic and manual emotion detection modes."
-          />
+
+        {/* Core Features */}
+        <div className="mb-16">
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Core Features</h3>
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <Feature
+              icon="⚡"
+              title="Client-side Processing"
+              description="All emotion detection runs directly in your browser for instant results."
+            />
+            <Feature
+              icon="🔒"
+              title="Complete Privacy"
+              description="No server communication needed - your data never leaves your device."
+            />
+            <Feature
+              icon="🎯"
+              title="High Accuracy"
+              description="Powered by face-api.js, using advanced neural networks for reliable detection."
+            />
+          </div>
+        </div>
+
+        {/* Analytics Features */}
+        <div className="mb-16">
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Analytics & Insights</h3>
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <Feature
+              icon="📊"
+              title="Real-time Analytics"
+              description="Track emotional patterns and trends with live updates and statistics."
+            />
+            <Feature
+              icon="📈"
+              title="Emotion Trends"
+              description="Visual representation of your emotional patterns over time."
+            />
+            <Feature
+              icon="💾"
+              title="Data Export"
+              description="Save your emotion history locally for personal analysis."
+            />
+            <Feature
+              icon="📋"
+              title="Detailed Reports"
+              description="Get insights into your emotional patterns with comprehensive analytics."
+            />
+            <Feature
+              icon="📉"
+              title="Confidence Scoring"
+              description="See the confidence level of each emotion detection."
+            />
+            <Feature
+              icon="🔍"
+              title="Historical Analysis"
+              description="Review and analyze your past emotional states."
+            />
+          </div>
+        </div>
+
+        {/* User Experience */}
+        <div className="mb-16">
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">User Experience</h3>
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <Feature
+              icon="🌓"
+              title="Dark/Light Theme"
+              description="Customizable interface that adapts to your preferred viewing mode."
+            />
+            <Feature
+              icon="📱"
+              title="Responsive Design"
+              description="Optimized for both desktop and mobile devices."
+            />
+            <Feature
+              icon="🎥"
+              title="Live Preview"
+              description="Real-time webcam feed with instant emotion feedback."
+            />
+            <Feature
+              icon="⌨️"
+              title="Keyboard Shortcuts"
+              description="Quick actions for improved productivity and control."
+            />
+            <Feature
+              icon="🖼️"
+              title="Snapshot Mode"
+              description="Capture and analyze specific moments in time."
+            />
+            <Feature
+              icon="🔔"
+              title="Alert System"
+              description="Optional notifications for significant emotion changes."
+            />
+          </div>
+        </div>
+
+        {/* Customization */}
+        <div className="mb-16">
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">Customization</h3>
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <Feature
+              icon="⚙️"
+              title="Adjustable Settings"
+              description="Customize detection frequency and automatic detection preferences."
+            />
+            <Feature
+              icon="🔄"
+              title="Auto-Detection"
+              description="Toggle between automatic and manual emotion detection modes."
+            />
+            <Feature
+              icon="🎚️"
+              title="Sensitivity Control"
+              description="Adjust the sensitivity of emotion detection to your needs."
+            />
+            <Feature
+              icon="📏"
+              title="Detection Zones"
+              description="Define specific areas for emotion detection in the frame."
+            />
+            <Feature
+              icon="⏱️"
+              title="Interval Control"
+              description="Set custom intervals for emotion detection sampling."
+            />
+            <Feature
+              icon="🎨"
+              title="UI Customization"
+              description="Personalize the interface layout and visualization options."
+            />
+          </div>
         </div>
       </div>
 
@@ -136,7 +207,7 @@ const LandingPage = ({ onStartDemo }) => {
 };
 
 const Feature = ({ icon, title, description }) => (
-  <div className="relative p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow hover:scale-105 duration-300">
+  <div className="relative p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all hover:scale-105 duration-300 border border-gray-100 dark:border-gray-700">
     <div className="text-4xl mb-4">{icon}</div>
     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
     <p className="text-gray-600 dark:text-gray-400">{description}</p>
