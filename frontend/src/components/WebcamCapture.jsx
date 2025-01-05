@@ -66,6 +66,7 @@ const WebcamCapture = ({
               faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
               faceapi.nets.faceExpressionNet.loadFromUri(modelUrl),
               faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
+              faceapi.nets.faceLandmark68TinyNet.loadFromUri(modelUrl),
               faceapi.nets.ageGenderNet.loadFromUri(modelUrl)
             ]);
 
@@ -375,11 +376,21 @@ const WebcamCapture = ({
       });
 
       // Detect faces with all features
-      const detections = await faceapi
+      let detections = await faceapi
         .detectSingleFace(video, detectionOptions)
-        .withFaceLandmarks(true)  // Explicitly request landmarks
+        .withFaceLandmarks(true)  // Use default landmark model
         .withFaceExpressions()
         .withAgeAndGender();
+
+      // If detection fails with default model, try tiny model
+      if (!detections) {
+        console.log('Retrying with tiny landmark model...');
+        detections = await faceapi
+          .detectSingleFace(video, detectionOptions)
+          .withFaceLandmarks(true, true)  // Use tiny landmark model
+          .withFaceExpressions()
+          .withAgeAndGender();
+      }
 
       if (detections) {
         // Draw detections on canvas
