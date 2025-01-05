@@ -1,7 +1,6 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
-import axios from 'axios';
-import wsService from '../services/websocket';
+import * as faceapi from 'face-api.js';
 
 const WebcamCapture = ({ 
   onEmotionDetected,
@@ -13,23 +12,31 @@ const WebcamCapture = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasWebcamPermission, setHasWebcamPermission] = useState(true);
-  const [isConnected, setIsConnected] = useState(wsService.isConnected);
+  const [isModelLoaded, setIsModelLoaded] = useState(false);
 
+  // Load face-api models
   useEffect(() => {
-    const handleConnect = () => setIsConnected(true);
-    const handleDisconnect = () => setIsConnected(false);
-
-    wsService.subscribe('connect', handleConnect);
-    wsService.subscribe('disconnect', handleDisconnect);
-
-    return () => {
-      wsService.unsubscribe('connect', handleConnect);
-      wsService.unsubscribe('disconnect', handleDisconnect);
+    const loadModels = async () => {
+      try {
+        setIsLoading(true);
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+          faceapi.nets.faceExpressionNet.loadFromUri('/models')
+        ]);
+        setIsModelLoaded(true);
+      } catch (err) {
+        console.error('Error loading models:', err);
+        setError('Failed to load emotion detection models');
+      } finally {
+        setIsLoading(false);
+      }
     };
+
+    loadModels();
   }, []);
 
   const captureImage = useCallback(async () => {
-    if (isLoading || !isConnected) return;
+    if (isLoading || !isModelLoaded) return;
 
     const imageSrc = webcamRef.current?.getScreenshot();
     if (!imageSrc) {
@@ -41,23 +48,45 @@ const WebcamCapture = ({
       setIsLoading(true);
       setError(null);
       
-      const response = await axios.post('http://localhost:8000/api/detect/', {
-        image: imageSrc
-      });
-      
-      if (response.data) {
-        onEmotionDetected(response.data);
+      // Create an HTML image element from the screenshot
+      const img = new Image();
+      img.src = imageSrc;
+      await new Promise((resolve) => { img.onload = resolve; });
+
+      // Detect faces and expressions
+      const detections = await faceapi
+        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+        .withFaceExpressions();
+
+      if (detections) {
+        // Map face-api expressions to our emotion format
+        const expressions = detections.expressions;
+        const emotionMap = {
+          happy: expressions.happy,
+          sad: expressions.sad,
+          angry: expressions.angry,
+          surprised: expressions.surprised,
+          neutral: expressions.neutral
+        };
+
+        // Find the emotion with highest confidence
+        const [emotion, confidence] = Object.entries(emotionMap)
+          .reduce((prev, curr) => curr[1] > prev[1] ? curr : prev);
+
+        onEmotionDetected({ emotion, confidence });
+      } else {
+        onEmotionDetected({ emotion: 'unknown', confidence: 0 });
       }
     } catch (error) {
       console.error('Error detecting emotion:', error);
-      setError(error.response?.data?.error || 'Failed to detect emotion');
+      setError('Failed to detect emotion');
     } finally {
       setIsLoading(false);
     }
-  }, [onEmotionDetected, isLoading, isConnected]);
+  }, [onEmotionDetected, isLoading, isModelLoaded]);
 
   useEffect(() => {
-    if (isAutoDetecting && isConnected) {
+    if (isAutoDetecting && isModelLoaded) {
       intervalRef.current = setInterval(captureImage, detectionFrequency);
 
       return () => {
@@ -71,7 +100,7 @@ const WebcamCapture = ({
         intervalRef.current = null;
       }
     }
-  }, [captureImage, detectionFrequency, isAutoDetecting, isConnected]);
+  }, [captureImage, detectionFrequency, isAutoDetecting, isModelLoaded]);
 
   if (!hasWebcamPermission) {
     return (
@@ -100,12 +129,12 @@ const WebcamCapture = ({
       {!isAutoDetecting && (
         <button
           onClick={captureImage}
-          disabled={isLoading || !isConnected}
+          disabled={isLoading || !isModelLoaded}
           className={`
             absolute bottom-4 right-4 px-4 py-2 rounded-full
             bg-white shadow-lg text-sm font-medium
             transition-all transform hover:scale-105
-            ${(isLoading || !isConnected) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}
+            ${(isLoading || !isModelLoaded) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}
           `}
         >
           {isLoading ? 'Detecting...' : 'Detect Emotion'}
@@ -124,11 +153,11 @@ const WebcamCapture = ({
         </div>
       )}
 
-      {!isConnected && (
+      {!isModelLoaded && !error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 rounded-lg">
           <div className="text-white text-center">
-            <p className="text-lg font-semibold mb-2">Connecting to server...</p>
-            <p className="text-sm opacity-80">Please wait while we establish connection</p>
+            <p className="text-lg font-semibold mb-2">Loading emotion detection models...</p>
+            <p className="text-sm opacity-80">This may take a few moments</p>
           </div>
         </div>
       )}
