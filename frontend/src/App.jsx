@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import WebcamCapture from './components/WebcamCapture'
 import EmotionDisplay from './components/EmotionDisplay'
 import EmotionHistory from './components/EmotionHistory'
@@ -6,9 +6,7 @@ import EmotionStats from './components/EmotionStats'
 import Settings from './components/Settings'
 import LandingPage from './components/LandingPage'
 import ThemeToggle from './components/ThemeToggle'
-import ConnectionStatus from './components/ConnectionStatus'
 import { ThemeProvider } from './context/ThemeContext'
-import wsService from './services/websocket'
 
 function App() {
   const [showDemo, setShowDemo] = useState(false);
@@ -21,33 +19,20 @@ function App() {
   const [isAutoDetecting, setIsAutoDetecting] = useState(true);
   const maxHistoryLength = 50;
 
-  useEffect(() => {
-    const handleEmotionUpdate = (data) => {
-      setEmotionData(data);
-      setEmotionHistory(prevHistory => {
-        const newHistory = [
-          ...prevHistory,
-          { ...data, timestamp: Date.now() }
-        ];
-        return newHistory.slice(-maxHistoryLength);
-      });
-    };
-
-    wsService.subscribe('emotion_update', handleEmotionUpdate);
-
-    return () => {
-      wsService.unsubscribe('emotion_update', handleEmotionUpdate);
-    };
-  }, []);
-
   const handleEmotionDetected = useCallback((data) => {
     if (data.error) {
       console.error('Emotion detection error:', data.error);
       return;
     }
 
-    // Emit the emotion data through WebSocket
-    wsService.emit('emotion_detected', data);
+    setEmotionData(data);
+    setEmotionHistory(prevHistory => {
+      const newHistory = [
+        ...prevHistory,
+        { ...data, timestamp: Date.now() }
+      ];
+      return newHistory.slice(-maxHistoryLength);
+    });
   }, []);
 
   const handleClearHistory = useCallback(() => {
@@ -91,7 +76,7 @@ function App() {
             ← Back to Home
           </button>
         </div>
-        
+
         <div className="grid gap-6">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 animate-fade-in">
             <WebcamCapture 
@@ -134,28 +119,6 @@ function App() {
             <EmotionHistory history={emotionHistory} />
             <EmotionStats history={emotionHistory} />
           </div>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 animate-slide-up">
-            <h2 className="text-xl font-semibold mb-4 dark:text-white">Tips for Best Results</h2>
-            <ul className="space-y-2 text-gray-600 dark:text-gray-300">
-              <li className="flex items-center">
-                <span className="mr-2">💡</span>
-                Ensure good lighting on your face
-              </li>
-              <li className="flex items-center">
-                <span className="mr-2">🎯</span>
-                Face the camera directly
-              </li>
-              <li className="flex items-center">
-                <span className="mr-2">📏</span>
-                Keep your face centered in the frame
-              </li>
-              <li className="flex items-center">
-                <span className="mr-2">⚡</span>
-                Adjust detection frequency for optimal performance
-              </li>
-            </ul>
-          </div>
         </div>
       </div>
     </div>
@@ -165,9 +128,8 @@ function App() {
     <ThemeProvider>
       {content}
       <ThemeToggle />
-      <ConnectionStatus />
     </ThemeProvider>
   );
 }
 
-export default App
+export default App;
