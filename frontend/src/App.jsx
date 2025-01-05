@@ -1,20 +1,36 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import WebcamCapture from './components/WebcamCapture'
 import EmotionDisplay from './components/EmotionDisplay'
+import EmotionHistory from './components/EmotionHistory'
 
 function App() {
   const [emotionData, setEmotionData] = useState({
     emotion: 'neutral',
     confidence: 0
   });
+  const [emotionHistory, setEmotionHistory] = useState([]);
+  const maxHistoryLength = 50; // Keep last 50 emotions
 
-  const handleEmotionDetected = (data) => {
+  const handleEmotionDetected = useCallback((data) => {
     if (data.error) {
       console.error('Emotion detection error:', data.error);
       return;
     }
+
+    // Update current emotion
     setEmotionData(data);
-  };
+
+    // Add to history with timestamp
+    setEmotionHistory(prevHistory => {
+      const newHistory = [
+        ...prevHistory,
+        { ...data, timestamp: Date.now() }
+      ];
+      
+      // Keep only the last maxHistoryLength items
+      return newHistory.slice(-maxHistoryLength);
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 py-8">
@@ -29,6 +45,8 @@ function App() {
             emotion={emotionData.emotion} 
             confidence={emotionData.confidence} 
           />
+          
+          <EmotionHistory history={emotionHistory} />
           
           <div className="mt-4 text-sm text-gray-500">
             <p>Note: For best results:</p>
