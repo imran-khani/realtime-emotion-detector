@@ -1,10 +1,14 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import WebcamCapture from './components/WebcamCapture'
 import EmotionDisplay from './components/EmotionDisplay'
 import EmotionHistory from './components/EmotionHistory'
 import EmotionStats from './components/EmotionStats'
 import Settings from './components/Settings'
 import LandingPage from './components/LandingPage'
+import ThemeToggle from './components/ThemeToggle'
+import ConnectionStatus from './components/ConnectionStatus'
+import { ThemeProvider } from './context/ThemeContext'
+import wsService from './services/websocket'
 
 function App() {
   const [showDemo, setShowDemo] = useState(false);
@@ -17,20 +21,33 @@ function App() {
   const [isAutoDetecting, setIsAutoDetecting] = useState(true);
   const maxHistoryLength = 50;
 
+  useEffect(() => {
+    const handleEmotionUpdate = (data) => {
+      setEmotionData(data);
+      setEmotionHistory(prevHistory => {
+        const newHistory = [
+          ...prevHistory,
+          { ...data, timestamp: Date.now() }
+        ];
+        return newHistory.slice(-maxHistoryLength);
+      });
+    };
+
+    wsService.subscribe('emotion_update', handleEmotionUpdate);
+
+    return () => {
+      wsService.unsubscribe('emotion_update', handleEmotionUpdate);
+    };
+  }, []);
+
   const handleEmotionDetected = useCallback((data) => {
     if (data.error) {
       console.error('Emotion detection error:', data.error);
       return;
     }
 
-    setEmotionData(data);
-    setEmotionHistory(prevHistory => {
-      const newHistory = [
-        ...prevHistory,
-        { ...data, timestamp: Date.now() }
-      ];
-      return newHistory.slice(-maxHistoryLength);
-    });
+    // Emit the emotion data through WebSocket
+    wsService.emit('emotion_detected', data);
   }, []);
 
   const handleClearHistory = useCallback(() => {
@@ -58,27 +75,25 @@ function App() {
     setIsAutoDetecting(prev => !prev);
   }, []);
 
-  if (!showDemo) {
-    return <LandingPage onStartDemo={() => setShowDemo(true)} />;
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white py-8">
+  const content = !showDemo ? (
+    <LandingPage onStartDemo={() => setShowDemo(true)} />
+  ) : (
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white dark:from-gray-900 dark:to-gray-800 py-8 transition-colors duration-300">
       <div className="max-w-4xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="flex items-center justify-between mb-8 animate-slide-down">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Emotion Detection Demo
           </h1>
           <button
             onClick={() => setShowDemo(false)}
-            className="text-gray-600 hover:text-gray-800 font-medium"
+            className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white font-medium transition-colors"
           >
             ← Back to Home
           </button>
         </div>
         
         <div className="grid gap-6">
-          <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 animate-fade-in">
             <WebcamCapture 
               onEmotionDetected={handleEmotionDetected}
               detectionFrequency={detectionFrequency}
@@ -97,19 +112,19 @@ function App() {
             onAutoDetectToggle={handleAutoDetectToggle}
           />
 
-          <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 animate-slide-up">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">History & Analytics</h2>
+              <h2 className="text-xl font-semibold dark:text-white">History & Analytics</h2>
               <div className="flex gap-2">
                 <button
                   onClick={handleClearHistory}
-                  className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                  className="px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
                 >
                   Clear History
                 </button>
                 <button
                   onClick={handleDownloadHistory}
-                  className="px-3 py-1 text-sm text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors"
+                  className="px-3 py-1 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-md transition-colors"
                 >
                   Download History
                 </button>
@@ -120,9 +135,9 @@ function App() {
             <EmotionStats history={emotionHistory} />
           </div>
           
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Tips for Best Results</h2>
-            <ul className="space-y-2 text-gray-600">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 animate-slide-up">
+            <h2 className="text-xl font-semibold mb-4 dark:text-white">Tips for Best Results</h2>
+            <ul className="space-y-2 text-gray-600 dark:text-gray-300">
               <li className="flex items-center">
                 <span className="mr-2">💡</span>
                 Ensure good lighting on your face
@@ -144,7 +159,15 @@ function App() {
         </div>
       </div>
     </div>
-  )
+  );
+
+  return (
+    <ThemeProvider>
+      {content}
+      <ThemeToggle />
+      <ConnectionStatus />
+    </ThemeProvider>
+  );
 }
 
 export default App

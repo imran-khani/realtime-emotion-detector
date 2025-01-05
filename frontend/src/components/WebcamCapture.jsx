@@ -1,6 +1,7 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
 import axios from 'axios';
+import wsService from '../services/websocket';
 
 const WebcamCapture = ({ 
   onEmotionDetected,
@@ -12,9 +13,23 @@ const WebcamCapture = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasWebcamPermission, setHasWebcamPermission] = useState(true);
+  const [isConnected, setIsConnected] = useState(wsService.isConnected);
+
+  useEffect(() => {
+    const handleConnect = () => setIsConnected(true);
+    const handleDisconnect = () => setIsConnected(false);
+
+    wsService.subscribe('connect', handleConnect);
+    wsService.subscribe('disconnect', handleDisconnect);
+
+    return () => {
+      wsService.unsubscribe('connect', handleConnect);
+      wsService.unsubscribe('disconnect', handleDisconnect);
+    };
+  }, []);
 
   const captureImage = useCallback(async () => {
-    if (isLoading) return; // Prevent multiple simultaneous requests
+    if (isLoading || !isConnected) return;
 
     const imageSrc = webcamRef.current?.getScreenshot();
     if (!imageSrc) {
@@ -39,11 +54,10 @@ const WebcamCapture = ({
     } finally {
       setIsLoading(false);
     }
-  }, [onEmotionDetected, isLoading]);
+  }, [onEmotionDetected, isLoading, isConnected]);
 
   useEffect(() => {
-    if (isAutoDetecting) {
-      // Start detection with the specified frequency
+    if (isAutoDetecting && isConnected) {
       intervalRef.current = setInterval(captureImage, detectionFrequency);
 
       return () => {
@@ -52,13 +66,12 @@ const WebcamCapture = ({
         }
       };
     } else {
-      // Clear interval if auto-detection is disabled
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     }
-  }, [captureImage, detectionFrequency, isAutoDetecting]);
+  }, [captureImage, detectionFrequency, isAutoDetecting, isConnected]);
 
   if (!hasWebcamPermission) {
     return (
@@ -87,12 +100,12 @@ const WebcamCapture = ({
       {!isAutoDetecting && (
         <button
           onClick={captureImage}
-          disabled={isLoading}
+          disabled={isLoading || !isConnected}
           className={`
             absolute bottom-4 right-4 px-4 py-2 rounded-full
             bg-white shadow-lg text-sm font-medium
             transition-all transform hover:scale-105
-            ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}
+            ${(isLoading || !isConnected) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}
           `}
         >
           {isLoading ? 'Detecting...' : 'Detect Emotion'}
@@ -108,6 +121,15 @@ const WebcamCapture = ({
       {error && (
         <div className="mt-2 p-2 bg-red-50 text-red-700 rounded-lg text-sm">
           {error}
+        </div>
+      )}
+
+      {!isConnected && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 rounded-lg">
+          <div className="text-white text-center">
+            <p className="text-lg font-semibold mb-2">Connecting to server...</p>
+            <p className="text-sm opacity-80">Please wait while we establish connection</p>
+          </div>
         </div>
       )}
     </div>
