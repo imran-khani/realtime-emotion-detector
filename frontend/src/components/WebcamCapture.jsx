@@ -8,6 +8,16 @@ const MODELS_URLS = [
   '/models'
 ];
 
+const LANDMARK_COLORS = {
+  jaw: '#E91E63',
+  nose: '#4CAF50',
+  mouth: '#FFC107',
+  leftEye: '#00BCD4',
+  rightEye: '#2196F3',
+  leftEyeBrow: '#9C27B0',
+  rightEyeBrow: '#673AB7'
+};
+
 const WebcamCapture = ({ 
   onEmotionDetected,
   detectionFrequency = 2000,
@@ -25,7 +35,10 @@ const WebcamCapture = ({
   const [showAgeGender, setShowAgeGender] = useState(false);
   const [showMesh, setShowMesh] = useState(false);
   const [showExpressions, setShowExpressions] = useState(true);
+  const [showTracking, setShowTracking] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [detectionSensitivity, setDetectionSensitivity] = useState(0.5);
+  const [trackingHistory, setTrackingHistory] = useState([]);
 
   // Load face-api models
   useEffect(() => {
@@ -92,9 +105,142 @@ const WebcamCapture = ({
     }
   }, []);
 
+  const drawFacialLandmarks = (ctx, landmarks) => {
+    if (!landmarks) {
+      console.log('No landmarks detected');
+      return;
+    }
+
+    try {
+      // Draw all landmark points with different colors for each feature
+      const features = {
+        jaw: landmarks.getJawOutline(),
+        nose: landmarks.getNose(),
+        mouth: landmarks.getMouth(),
+        leftEye: landmarks.getLeftEye(),
+        rightEye: landmarks.getRightEye(),
+        leftEyeBrow: landmarks.getLeftEyeBrow(),
+        rightEyeBrow: landmarks.getRightEyeBrow()
+      };
+
+      // Save current canvas state
+      ctx.save();
+      
+      // Set line join for smoother connections
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+
+      Object.entries(features).forEach(([feature, points]) => {
+        if (!points || points.length === 0) {
+          console.log(`No points for ${feature}`);
+          return;
+        }
+
+        ctx.strokeStyle = LANDMARK_COLORS[feature];
+        ctx.fillStyle = LANDMARK_COLORS[feature];
+        ctx.lineWidth = 2;
+
+        // Draw points with larger radius
+        points.forEach(point => {
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+          ctx.fill();
+        });
+
+        // Connect points with lines
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        points.forEach((point, i) => {
+          if (i > 0) {
+            // Use quadratic curves for smoother lines
+            const xc = (point.x + points[i - 1].x) / 2;
+            const yc = (point.y + points[i - 1].y) / 2;
+            ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, xc, yc);
+          }
+        });
+        
+        // Close the path for eyes and mouth
+        if (['leftEye', 'rightEye', 'mouth'].includes(feature)) {
+          ctx.closePath();
+        }
+        ctx.stroke();
+
+        // Draw feature labels if enabled
+        if (showFeatures) {
+          const center = points.reduce(
+            (acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }),
+            { x: 0, y: 0 }
+          );
+          center.x /= points.length;
+          center.y /= points.length;
+
+          // Add background to text for better visibility
+          ctx.font = 'bold 14px Arial';
+          const text = feature.replace(/([A-Z])/g, ' $1').toLowerCase();
+          const textWidth = ctx.measureText(text).width;
+          
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+          ctx.fillRect(center.x - textWidth/2 - 2, center.y - 12, textWidth + 4, 16);
+          
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(text, center.x, center.y);
+        }
+      });
+
+      // Restore canvas state
+      ctx.restore();
+    } catch (error) {
+      console.error('Error drawing landmarks:', error);
+    }
+  };
+
+  const updateTrackingHistory = (detection) => {
+    const maxHistoryLength = 30; // Number of positions to track
+    const newPosition = {
+      x: detection.detection.box.x + detection.detection.box.width / 2,
+      y: detection.detection.box.y + detection.detection.box.height / 2,
+      timestamp: Date.now()
+    };
+
+    setTrackingHistory(prev => {
+      const updated = [...prev, newPosition].slice(-maxHistoryLength);
+      return updated;
+    });
+  };
+
+  const drawTrackingPath = (ctx) => {
+    if (!showTracking || trackingHistory.length < 2) return;
+
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(trackingHistory[0].x, trackingHistory[0].y);
+    
+    trackingHistory.forEach((pos, i) => {
+      if (i === 0) return;
+      
+      // Create smooth curve between points
+      const xc = (pos.x + trackingHistory[i - 1].x) / 2;
+      const yc = (pos.y + trackingHistory[i - 1].y) / 2;
+      ctx.quadraticCurveTo(trackingHistory[i - 1].x, trackingHistory[i - 1].y, xc, yc);
+      
+      // Add fading effect
+      const age = Date.now() - pos.timestamp;
+      const opacity = Math.max(0, 1 - age / 1000); // Fade over 1 second
+      ctx.strokeStyle = `rgba(0, 255, 0, ${opacity})`;
+    });
+    
+    ctx.stroke();
+  };
+
   const drawDetections = async (detections, canvas) => {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw tracking path first (behind everything else)
+    drawTrackingPath(ctx);
 
     // Draw face detection box
     if (showDetectionBox) {
@@ -102,17 +248,17 @@ const WebcamCapture = ({
       ctx.strokeStyle = '#00ff00';
       ctx.lineWidth = 2;
       ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+      // Draw center point
+      ctx.fillStyle = '#ff0000';
+      ctx.beginPath();
+      ctx.arc(box.x + box.width/2, box.y + box.height/2, 3, 0, 2 * Math.PI);
+      ctx.fill();
     }
 
-    // Draw facial landmarks
+    // Draw detailed facial landmarks
     if (showLandmarks) {
-      const landmarks = detections.landmarks;
-      ctx.fillStyle = '#00ff00';
-      landmarks.positions.forEach(point => {
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, 2, 0, 2 * Math.PI);
-        ctx.fill();
-      });
+      drawFacialLandmarks(ctx, detections.landmarks);
     }
 
     // Draw face mesh
@@ -208,6 +354,9 @@ const WebcamCapture = ({
         detections.detection.box.y - 10
       );
     }
+
+    // Update tracking history
+    updateTrackingHistory(detections);
   };
 
   const captureImage = useCallback(async () => {
@@ -219,23 +368,34 @@ const WebcamCapture = ({
       
       const video = webcamRef.current.video;
       
-      // Configure detection options
+      // Configure detection options with lower scoreThreshold for better detection
       const detectionOptions = new faceapi.TinyFaceDetectorOptions({
-        inputSize: 512,
-        scoreThreshold: detectionSensitivity
+        inputSize: 224,  // Reduced for better performance
+        scoreThreshold: 0.3  // Lower threshold for better detection
       });
 
       // Detect faces with all features
       const detections = await faceapi
         .detectSingleFace(video, detectionOptions)
-        .withFaceLandmarks()
+        .withFaceLandmarks(true)  // Explicitly request landmarks
         .withFaceExpressions()
         .withAgeAndGender();
 
       if (detections) {
         // Draw detections on canvas
         if (canvasRef.current) {
-          await drawDetections(detections, canvasRef.current);
+          // Ensure canvas dimensions match video
+          const displaySize = {
+            width: video.videoWidth,
+            height: video.videoHeight
+          };
+          if (canvasRef.current.width !== displaySize.width || canvasRef.current.height !== displaySize.height) {
+            faceapi.matchDimensions(canvasRef.current, displaySize);
+          }
+
+          // Get detections resized to match canvas
+          const resizedDetections = faceapi.resizeResults(detections, displaySize);
+          await drawDetections(resizedDetections, canvasRef.current);
         }
 
         // Map face-api expressions to our emotion format
@@ -267,6 +427,7 @@ const WebcamCapture = ({
           box: detections.detection.box
         });
       } else {
+        console.log('No face detected');
         onEmotionDetected({ emotion: 'unknown', confidence: 0 });
       }
     } catch (error) {
@@ -341,6 +502,22 @@ const WebcamCapture = ({
           }`}
         >
           Landmarks
+        </button>
+        <button
+          onClick={() => setShowFeatures(prev => !prev)}
+          className={`px-3 py-1 rounded-md text-sm ${
+            showFeatures ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
+          }`}
+        >
+          Feature Labels
+        </button>
+        <button
+          onClick={() => setShowTracking(prev => !prev)}
+          className={`px-3 py-1 rounded-md text-sm ${
+            showTracking ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
+          }`}
+        >
+          Face Tracking
         </button>
         <button
           onClick={() => setShowMesh(prev => !prev)}
