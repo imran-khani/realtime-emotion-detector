@@ -1,33 +1,33 @@
-# Real-time Emotion Chat App
+# Browser-based Emotion Detection
 
-A real-time chat application with integrated facial emotion recognition capabilities. The application uses computer vision and machine learning to analyze facial expressions during conversations, enhancing communication through emotion detection.
+A real-time facial emotion detection application that runs entirely in your browser. Using face-api.js, the application analyzes facial expressions to detect emotions, providing instant feedback and analytics - all while maintaining complete privacy as no data leaves your device.
 
 ## Features
 
-- Real-time facial emotion recognition
-- Five-emotion classification system
-- Intelligent message enhancement based on detected emotions
-- Real-time chat functionality
-- Browser-based webcam integration
+- Real-time facial emotion detection
+- Client-side processing using face-api.js
+- Five-emotion classification (happy, sad, angry, surprised, neutral)
+- Dark/Light theme support
+- Emotion history tracking and analytics
+- Downloadable emotion history
+- No backend required - runs entirely in your browser
 
 ## How It Works
 
-1. OpenCV captures the video feed and detects faces
-2. TensorFlow analyzes facial expressions to detect emotions
-3. The system processes emotional data to enhance messaging experience
+1. face-api.js loads pre-trained models for face detection and emotion recognition
+2. Your webcam feed is processed in real-time using these models
+3. Detected emotions are displayed and tracked in the UI
+4. All processing happens locally in your browser - no data is sent to any server
 
 ## Technology Stack
 
-- Django (Backend)
-- OpenCV (Webcam capture & face detection)
-- TensorFlow (Emotion detection model)
-- WebSocket (Real-time updates)
-- React and Tailwind CSS (Frontend)
+- React (Frontend framework)
+- face-api.js (Face detection and emotion recognition)
+- Vite (Build tool)
+- Tailwind CSS (Styling)
 
 ## System Requirements
 
-- Python 3.8+
-- Node.js 16+
 - Modern browser (Chrome 88+, Firefox 87+, Safari 14+)
 - Webcam access
 - 4GB RAM (minimum)
@@ -37,50 +37,30 @@ A real-time chat application with integrated facial emotion recognition capabili
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/emotion-chat-app.git
-   cd emotion-chat-app
+   git clone https://github.com/your-repo/emotion-detection.git
+   cd emotion-detection
    ```
 
-2. Create a virtual environment:
+2. Install dependencies:
    ```bash
-   python -m venv venv
-   source venv/bin/activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
    cd frontend
-   npm install
+   bun install
    ```
 
-4. Run the development servers:
+3. Run the development server:
    ```bash
-   # Terminal 1 - Backend
-   python manage.py runserver
-
-   # Terminal 2 - Frontend
-   cd frontend
-   npm start
+   bun dev
    ```
 
-5. Open the app in your browser:
-   [http://localhost:3000](http://localhost:3000)
-
-## Emotions Detected
-
-The app recognizes these emotions and suggests matching emojis:
-- Happy
-- Sad
-- Angry
-- Surprised
-- Neutral
+4. Open the app in your browser:
+   [http://localhost:5173](http://localhost:5173)
 
 ## Privacy & Security
 
-- Camera data is processed locally in your browser
-- No video is saved or transmitted
-- No personal data collection
+- All processing is done locally in your browser
+- No video or image data is ever sent to any server
+- No personal data is collected or stored externally
+- Emotion history is stored only in your browser's memory
 
 ## License
 
@@ -88,4 +68,4 @@ MIT License
 
 ---
 
-Made for real-time emotion-aware communication
+Made with ❤️ using face-api.js and React
