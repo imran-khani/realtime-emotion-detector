@@ -3,6 +3,7 @@ import WebcamCapture from './components/WebcamCapture'
 import EmotionDisplay from './components/EmotionDisplay'
 import EmotionHistory from './components/EmotionHistory'
 import EmotionStats from './components/EmotionStats'
+import Settings from './components/Settings'
 
 function App() {
   const [emotionData, setEmotionData] = useState({
@@ -10,7 +11,9 @@ function App() {
     confidence: 0
   });
   const [emotionHistory, setEmotionHistory] = useState([]);
-  const maxHistoryLength = 50; // Keep last 50 emotions
+  const [detectionFrequency, setDetectionFrequency] = useState(2000);
+  const [isAutoDetecting, setIsAutoDetecting] = useState(true);
+  const maxHistoryLength = 50;
 
   const handleEmotionDetected = useCallback((data) => {
     if (data.error) {
@@ -18,17 +21,12 @@ function App() {
       return;
     }
 
-    // Update current emotion
     setEmotionData(data);
-
-    // Add to history with timestamp
     setEmotionHistory(prevHistory => {
       const newHistory = [
         ...prevHistory,
         { ...data, timestamp: Date.now() }
       ];
-      
-      // Keep only the last maxHistoryLength items
       return newHistory.slice(-maxHistoryLength);
     });
   }, []);
@@ -50,6 +48,14 @@ function App() {
     URL.revokeObjectURL(url);
   }, [emotionHistory]);
 
+  const handleFrequencyChange = useCallback((newFrequency) => {
+    setDetectionFrequency(newFrequency);
+  }, []);
+
+  const handleAutoDetectToggle = useCallback(() => {
+    setIsAutoDetecting(prev => !prev);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-3xl mx-auto px-4">
@@ -58,12 +64,23 @@ function App() {
         </h1>
         
         <div className="bg-white rounded-xl shadow-lg p-6">
-          <WebcamCapture onEmotionDetected={handleEmotionDetected} />
+          <WebcamCapture 
+            onEmotionDetected={handleEmotionDetected}
+            detectionFrequency={detectionFrequency}
+            isAutoDetecting={isAutoDetecting}
+          />
           <EmotionDisplay 
             emotion={emotionData.emotion} 
             confidence={emotionData.confidence} 
           />
           
+          <Settings
+            detectionFrequency={detectionFrequency}
+            onFrequencyChange={handleFrequencyChange}
+            isAutoDetecting={isAutoDetecting}
+            onAutoDetectToggle={handleAutoDetectToggle}
+          />
+
           <div className="flex justify-end gap-2 mt-4">
             <button
               onClick={handleClearHistory}

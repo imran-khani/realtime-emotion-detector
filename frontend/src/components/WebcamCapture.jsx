@@ -2,7 +2,11 @@ import { useRef, useCallback, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
 import axios from 'axios';
 
-const WebcamCapture = ({ onEmotionDetected }) => {
+const WebcamCapture = ({ 
+  onEmotionDetected,
+  detectionFrequency = 2000,
+  isAutoDetecting = true
+}) => {
   const webcamRef = useRef(null);
   const intervalRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,15 +42,23 @@ const WebcamCapture = ({ onEmotionDetected }) => {
   }, [onEmotionDetected, isLoading]);
 
   useEffect(() => {
-    // Capture and analyze every 2 seconds (reduced from 1 second for better performance)
-    intervalRef.current = setInterval(captureImage, 2000);
+    if (isAutoDetecting) {
+      // Start detection with the specified frequency
+      intervalRef.current = setInterval(captureImage, detectionFrequency);
 
-    return () => {
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      };
+    } else {
+      // Clear interval if auto-detection is disabled
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
-    };
-  }, [captureImage]);
+    }
+  }, [captureImage, detectionFrequency, isAutoDetecting]);
 
   if (!hasWebcamPermission) {
     return (
@@ -71,6 +83,21 @@ const WebcamCapture = ({ onEmotionDetected }) => {
           facingMode: "user"
         }}
       />
+      
+      {!isAutoDetecting && (
+        <button
+          onClick={captureImage}
+          disabled={isLoading}
+          className={`
+            absolute bottom-4 right-4 px-4 py-2 rounded-full
+            bg-white shadow-lg text-sm font-medium
+            transition-all transform hover:scale-105
+            ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}
+          `}
+        >
+          {isLoading ? 'Detecting...' : 'Detect Emotion'}
+        </button>
+      )}
       
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-lg">
