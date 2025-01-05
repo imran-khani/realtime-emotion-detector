@@ -1,49 +1,65 @@
-import { mkdir, writeFile } from 'fs/promises';
-import { join } from 'path';
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
 const MODELS_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
-const MODELS_DIR = join(process.cwd(), 'public', 'models');
+const MODELS_DIR = path.join(process.cwd(), 'public', 'models');
 
 const MODELS = [
-  'tiny_face_detector_model-shard1',
   'tiny_face_detector_model-weights_manifest.json',
-  'face_expression_model-shard1',
-  'face_expression_model-weights_manifest.json',
-  'face_landmark_68_model-shard1',
+  'tiny_face_detector_model-shard1',
   'face_landmark_68_model-weights_manifest.json',
+  'face_landmark_68_model-shard1',
+  'face_landmark_68_tiny_model-weights_manifest.json',
+  'face_landmark_68_tiny_model-shard1',
+  'face_recognition_model-weights_manifest.json',
   'face_recognition_model-shard1',
   'face_recognition_model-shard2',
-  'face_recognition_model-weights_manifest.json'
+  'face_expression_model-weights_manifest.json',
+  'face_expression_model-shard1',
+  'age_gender_model-weights_manifest.json',
+  'age_gender_model-shard1'
 ];
 
-async function downloadFile(url, dest) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Failed to download ${url}: ${response.statusText}`);
-  const buffer = await response.arrayBuffer();
-  await writeFile(dest, Buffer.from(buffer));
+// Create models directory if it doesn't exist
+if (!fs.existsSync(MODELS_DIR)) {
+  fs.mkdirSync(MODELS_DIR, { recursive: true });
 }
 
-async function main() {
-  try {
-    // Create models directory if it doesn't exist
-    await mkdir(MODELS_DIR, { recursive: true });
+const downloadFile = (url, dest) => {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+    https.get(url, response => {
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close();
+        resolve();
+      });
+    }).on('error', err => {
+      fs.unlink(dest, () => {});
+      reject(err);
+    });
+  });
+};
+
+const downloadModels = async () => {
+  console.log('Downloading face-api.js models...');
+  
+  for (const model of MODELS) {
+    const url = `${MODELS_URL}/${model}`;
+    const dest = path.join(MODELS_DIR, model);
     
-    console.log('Downloading face-api.js models...');
-    
-    // Download each model file
-    for (const model of MODELS) {
-      const url = `${MODELS_URL}/${model}`;
-      const dest = join(MODELS_DIR, model);
-      
-      console.log(`Downloading ${model}...`);
+    console.log(`Downloading ${model}...`);
+    try {
       await downloadFile(url, dest);
+      console.log(`✓ Downloaded ${model}`);
+    } catch (err) {
+      console.error(`✗ Failed to download ${model}:`, err.message);
+      process.exit(1);
     }
-    
-    console.log('All models downloaded successfully!');
-  } catch (error) {
-    console.error('Error downloading models:', error);
-    process.exit(1);
   }
-}
+  
+  console.log('All models downloaded successfully!');
+};
 
-main(); 
+downloadModels(); 

@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "download-models": "node scripts/download-models.js",
-    "postinstall": "bun run download-models"
+    "postinstall": "npm run download-models"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

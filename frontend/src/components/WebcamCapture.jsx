@@ -1,6 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
-import * as faceapi from 'face-api.js';
 
 const MODELS_URLS = [
   'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights',
@@ -20,7 +19,7 @@ const LANDMARK_COLORS = {
 
 const WebcamCapture = ({ 
   onEmotionDetected,
-  detectionFrequency = 2000,
+  detectionFrequency = 10, // Increased to ~100fps for smoother detection
   isAutoDetecting = true
 }) => {
   const webcamRef = useRef(null);
@@ -32,22 +31,96 @@ const WebcamCapture = ({
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [showDetectionBox, setShowDetectionBox] = useState(true);
   const [showLandmarks, setShowLandmarks] = useState(false);
-  const [showAgeGender, setShowAgeGender] = useState(false);
-  const [showMesh, setShowMesh] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [showExpressions, setShowExpressions] = useState(true);
   const [showTracking, setShowTracking] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showMesh, setShowMesh] = useState(false);
   const [detectionSensitivity, setDetectionSensitivity] = useState(0.5);
   const [trackingHistory, setTrackingHistory] = useState([]);
 
-  // Load face-api models
+  // Add RAF handling for smooth rendering
+  const rafId = useRef(null);
+  const lastDetectionTime = useRef(0);
+  const processingFrame = useRef(false);
+
+  // Add smoothing for tracking and age
+  const smoothedValues = useRef({
+    position: { x: 0, y: 0 },
+    age: 0,
+    alpha: 0.8 // Smoothing factor (0-1), higher = more smoothing
+  });
+
+  const smoothValue = (newValue, oldValue, alpha = performanceSettings.current.smoothingFactor) => {
+    if (oldValue === undefined) return newValue;
+    return oldValue + alpha * (newValue - oldValue);
+  };
+
+  // Optimized performance settings
+  const performanceSettings = useRef({
+    lastDrawTime: 0,
+    drawFrequency: 10, // 100fps for drawing
+    minProcessingTime: 5, // Lower threshold for better responsiveness
+    skippedFrames: 0,
+    maxSkippedFrames: 1,
+    bufferSize: 5, // Increased buffer size for smoother transitions
+    detectionBuffer: [],
+    smoothingFactor: 0.8 // Higher smoothing factor
+  });
+
+  // Add faceapi state
+  const [faceapi, setFaceapi] = useState(null);
+
+  // Improved smoothing function with configurable buffer
+  const smoothDetection = (detection) => {
+    const buffer = performanceSettings.current.detectionBuffer;
+    buffer.push(detection);
+    
+    // Keep buffer at desired size
+    if (buffer.length > performanceSettings.current.bufferSize) {
+      buffer.shift();
+    }
+
+    // If buffer isn't full yet, return current detection
+    if (buffer.length < 2) return detection;
+
+    // Calculate smoothed values
+    const smoothed = {
+      detection: {
+        box: {
+          x: buffer.reduce((sum, d) => sum + d.detection.box.x, 0) / buffer.length,
+          y: buffer.reduce((sum, d) => sum + d.detection.box.y, 0) / buffer.length,
+          width: buffer.reduce((sum, d) => sum + d.detection.box.width, 0) / buffer.length,
+          height: buffer.reduce((sum, d) => sum + d.detection.box.height, 0) / buffer.length
+        }
+      },
+      expressions: {},
+      age: buffer.reduce((sum, d) => sum + d.age, 0) / buffer.length,
+      gender: detection.gender,
+      genderProbability: detection.genderProbability,
+      landmarks: detection.landmarks
+    };
+
+    // Smooth expressions
+    const expressions = {};
+    Object.keys(detection.expressions).forEach(expr => {
+      expressions[expr] = buffer.reduce((sum, d) => sum + d.expressions[expr], 0) / buffer.length;
+    });
+    smoothed.expressions = expressions;
+
+    return smoothed;
+  };
+
+  // Load only required models
   useEffect(() => {
     const loadModels = async () => {
       try {
         setIsLoading(true);
         
-        // Configure model loading
-        faceapi.env.monkeyPatch({
+        // Dynamically import face-api
+        const faceapiModule = await import('face-api.js');
+        setFaceapi(faceapiModule);
+        
+        faceapiModule.env.monkeyPatch({
           Canvas: HTMLCanvasElement,
           Image: HTMLImageElement,
           ImageData: ImageData,
@@ -56,35 +129,32 @@ const WebcamCapture = ({
           createImageElement: () => document.createElement('img')
         });
 
-        // Try loading models from different URLs
         let lastError = null;
         for (const modelUrl of MODELS_URLS) {
           try {
-            console.log(`Attempting to load models from ${modelUrl}...`);
+            console.log(`Loading models from ${modelUrl}...`);
             
+            // Load only required models for better performance
             await Promise.all([
-              faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
-              faceapi.nets.faceExpressionNet.loadFromUri(modelUrl),
-              faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
-              faceapi.nets.faceLandmark68TinyNet.loadFromUri(modelUrl),
-              faceapi.nets.ageGenderNet.loadFromUri(modelUrl)
+              faceapiModule.nets.tinyFaceDetector.loadFromUri(modelUrl),
+              faceapiModule.nets.faceExpressionNet.loadFromUri(modelUrl),
+              faceapiModule.nets.faceLandmark68TinyNet.loadFromUri(modelUrl)
             ]);
 
-            console.log(`Successfully loaded models from ${modelUrl}`);
+            console.log(`Models loaded from ${modelUrl}`);
             setIsModelLoaded(true);
             setError(null);
-            return; // Success, exit the loop
+            return;
           } catch (err) {
             console.error(`Failed to load from ${modelUrl}:`, err);
             lastError = err;
           }
         }
 
-        // If we get here, all URLs failed
-        throw lastError || new Error('Failed to load models from all sources');
+        throw lastError || new Error('Failed to load models');
       } catch (err) {
         console.error('Error loading models:', err);
-        setError(`Failed to load models. Please check your internet connection and try refreshing the page.`);
+        setError(`Failed to load models. Please refresh the page.`);
       } finally {
         setIsLoading(false);
       }
@@ -95,15 +165,30 @@ const WebcamCapture = ({
 
   // Setup canvas overlay
   useEffect(() => {
-    if (webcamRef.current && canvasRef.current) {
-      const video = webcamRef.current.video;
-      const canvas = canvasRef.current;
-      
-      if (video) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+    const setupCanvas = () => {
+      if (webcamRef.current?.video && canvasRef.current) {
+        const video = webcamRef.current.video;
+        const canvas = canvasRef.current;
+        
+        // Set canvas size to match video
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
       }
+    };
+
+    // Initial setup
+    setupCanvas();
+
+    // Setup when video loads
+    if (webcamRef.current?.video) {
+      webcamRef.current.video.addEventListener('loadeddata', setupCanvas);
     }
+
+    return () => {
+      if (webcamRef.current?.video) {
+        webcamRef.current.video.removeEventListener('loadeddata', setupCanvas);
+      }
+    };
   }, []);
 
   const drawFacialLandmarks = (ctx, landmarks) => {
@@ -197,11 +282,29 @@ const WebcamCapture = ({
     }
   };
 
-  const updateTrackingHistory = (detection) => {
-    const maxHistoryLength = 30; // Number of positions to track
+  const updateTrackingHistory = useCallback((detection) => {
+    const maxHistoryLength = 30; // Reduced for better performance
+    const box = detection.detection.box;
+    
+    // Calculate center point
+    const newX = box.x + box.width / 2;
+    const newY = box.y + box.height / 2;
+
+    // Apply stronger smoothing for more stable tracking
+    smoothedValues.current.position.x = smoothValue(
+      newX,
+      smoothedValues.current.position.x,
+      0.6 // Increased smoothing
+    );
+    smoothedValues.current.position.y = smoothValue(
+      newY,
+      smoothedValues.current.position.y,
+      0.6 // Increased smoothing
+    );
+
     const newPosition = {
-      x: detection.detection.box.x + detection.detection.box.width / 2,
-      y: detection.detection.box.y + detection.detection.box.height / 2,
+      x: smoothedValues.current.position.x,
+      y: smoothedValues.current.position.y,
       timestamp: Date.now()
     };
 
@@ -209,7 +312,7 @@ const WebcamCapture = ({
       const updated = [...prev, newPosition].slice(-maxHistoryLength);
       return updated;
     });
-  };
+  }, []);
 
   const drawTrackingPath = (ctx) => {
     if (!showTracking || trackingHistory.length < 2) return;
@@ -219,19 +322,24 @@ const WebcamCapture = ({
     ctx.beginPath();
     ctx.moveTo(trackingHistory[0].x, trackingHistory[0].y);
     
-    trackingHistory.forEach((pos, i) => {
-      if (i === 0) return;
+    // Use Bezier curves for smoother path
+    for (let i = 1; i < trackingHistory.length - 2; i++) {
+      const xc = (trackingHistory[i].x + trackingHistory[i + 1].x) / 2;
+      const yc = (trackingHistory[i].y + trackingHistory[i + 1].y) / 2;
       
-      // Create smooth curve between points
-      const xc = (pos.x + trackingHistory[i - 1].x) / 2;
-      const yc = (pos.y + trackingHistory[i - 1].y) / 2;
-      ctx.quadraticCurveTo(trackingHistory[i - 1].x, trackingHistory[i - 1].y, xc, yc);
+      // Bezier curve control points
+      const cp1x = trackingHistory[i].x;
+      const cp1y = trackingHistory[i].y;
+      const cp2x = xc;
+      const cp2y = yc;
+      
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, xc, yc);
       
       // Add fading effect
-      const age = Date.now() - pos.timestamp;
-      const opacity = Math.max(0, 1 - age / 1000); // Fade over 1 second
+      const age = Date.now() - trackingHistory[i].timestamp;
+      const opacity = Math.max(0, 1 - age / 2000); // Slower fade (2 seconds)
       ctx.strokeStyle = `rgba(0, 255, 0, ${opacity})`;
-    });
+    }
     
     ctx.stroke();
   };
@@ -337,134 +445,134 @@ const WebcamCapture = ({
       });
     }
 
-    // Draw age and gender
-    if (showAgeGender && detections.age && detections.gender) {
-      const { age, gender, genderProbability } = detections;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(detections.detection.box.x - 10, detections.detection.box.y - 50, 200, 40);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '16px Arial';
-      ctx.fillText(
-        `${Math.round(age)} years old`,
-        detections.detection.box.x,
-        detections.detection.box.y - 30
-      );
-      ctx.fillText(
-        `${gender} (${(genderProbability * 100).toFixed(1)}%)`,
-        detections.detection.box.x,
-        detections.detection.box.y - 10
-      );
-    }
-
     // Update tracking history
     updateTrackingHistory(detections);
   };
 
-  const captureImage = useCallback(async () => {
-    if (isLoading || !isModelLoaded || !webcamRef.current?.video) return;
+  const processFrame = useCallback(async () => {
+    if (!webcamRef.current?.video || !canvasRef.current || !isModelLoaded) {
+      rafId.current = requestAnimationFrame(processFrame);
+      return;
+    }
 
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const video = webcamRef.current.video;
-      
-      // Configure detection options with lower scoreThreshold for better detection
-      const detectionOptions = new faceapi.TinyFaceDetectorOptions({
-        inputSize: 224,  // Reduced for better performance
-        scoreThreshold: 0.3  // Lower threshold for better detection
-      });
+    const video = webcamRef.current.video;
+    const canvas = canvasRef.current;
+    const now = performance.now();
 
-      // Detect faces with all features
-      let detections = await faceapi
-        .detectSingleFace(video, detectionOptions)
-        .withFaceLandmarks(true)  // Use default landmark model
-        .withFaceExpressions()
-        .withAgeAndGender();
+    // Ensure video is ready
+    if (video.readyState !== 4) {
+      rafId.current = requestAnimationFrame(processFrame);
+      return;
+    }
 
-      // If detection fails with default model, try tiny model
-      if (!detections) {
-        console.log('Retrying with tiny landmark model...');
-        detections = await faceapi
+    // Check if we should process this frame
+    const timeSinceLastDetection = now - lastDetectionTime.current;
+    const shouldProcessFrame = !processingFrame.current && 
+      timeSinceLastDetection >= detectionFrequency &&
+      performanceSettings.current.skippedFrames <= performanceSettings.current.maxSkippedFrames;
+
+    // Update canvas size if needed
+    const displaySize = { width: video.videoWidth, height: video.videoHeight };
+    if (canvas.width !== displaySize.width || canvas.height !== displaySize.height) {
+      canvas.width = displaySize.width;
+      canvas.height = displaySize.height;
+      faceapi.matchDimensions(canvas, displaySize);
+    }
+
+    if (shouldProcessFrame) {
+      const processStart = performance.now();
+      processingFrame.current = true;
+      lastDetectionTime.current = now;
+
+      try {
+        // Optimized detection options
+        const detectionOptions = new faceapi.TinyFaceDetectorOptions({
+          inputSize: 160,
+          scoreThreshold: 0.3
+        });
+
+        const detections = await faceapi
           .detectSingleFace(video, detectionOptions)
-          .withFaceLandmarks(true, true)  // Use tiny landmark model
-          .withFaceExpressions()
-          .withAgeAndGender();
-      }
+          .withFaceLandmarks(true, true)
+          .withFaceExpressions();
 
-      if (detections) {
-        // Draw detections on canvas
-        if (canvasRef.current) {
-          // Ensure canvas dimensions match video
-          const displaySize = {
-            width: video.videoWidth,
-            height: video.videoHeight
+        if (detections) {
+          // Apply smoothing to detections
+          const smoothedDetections = smoothDetection(detections);
+
+          // Clear and draw
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Resize and draw
+          const resizedDetections = faceapi.resizeResults(smoothedDetections, displaySize);
+          await drawDetections(resizedDetections, canvas);
+
+          // Process emotions
+          const expressions = smoothedDetections.expressions;
+          const emotionMap = {
+            happy: expressions.happy,
+            sad: expressions.sad,
+            angry: expressions.angry,
+            surprised: expressions.surprised,
+            neutral: expressions.neutral,
+            fearful: expressions.fearful,
+            disgusted: expressions.disgusted
           };
-          if (canvasRef.current.width !== displaySize.width || canvasRef.current.height !== displaySize.height) {
-            faceapi.matchDimensions(canvasRef.current, displaySize);
-          }
 
-          // Get detections resized to match canvas
-          const resizedDetections = faceapi.resizeResults(detections, displaySize);
-          await drawDetections(resizedDetections, canvasRef.current);
+          const [emotion, confidence] = Object.entries(emotionMap)
+            .reduce((prev, curr) => curr[1] > prev[1] ? curr : prev);
+
+          onEmotionDetected({
+            emotion,
+            confidence,
+            timestamp: now,
+            expressions: smoothedDetections.expressions,
+            landmarks: showLandmarks ? smoothedDetections.landmarks.positions : null,
+            box: smoothedDetections.detection.box
+          });
+
+          performanceSettings.current.skippedFrames = 0;
         }
 
-        // Map face-api expressions to our emotion format
-        const expressions = detections.expressions;
-        const emotionMap = {
-          happy: expressions.happy,
-          sad: expressions.sad,
-          angry: expressions.angry,
-          surprised: expressions.surprised,
-          neutral: expressions.neutral,
-          fearful: expressions.fearful,
-          disgusted: expressions.disgusted
-        };
-
-        // Find the emotion with highest confidence
-        const [emotion, confidence] = Object.entries(emotionMap)
-          .reduce((prev, curr) => curr[1] > prev[1] ? curr : prev);
-
-        // Send detection data to parent
-        onEmotionDetected({ 
-          emotion, 
-          confidence,
-          timestamp: Date.now(),
-          expressions: detections.expressions,
-          age: detections.age,
-          gender: detections.gender,
-          genderProbability: detections.genderProbability,
-          landmarks: showLandmarks ? detections.landmarks.positions : null,
-          box: detections.detection.box
-        });
-      } else {
-        console.log('No face detected');
-        onEmotionDetected({ emotion: 'unknown', confidence: 0 });
+        const processingTime = performance.now() - processStart;
+        if (processingTime > performanceSettings.current.minProcessingTime) {
+          performanceSettings.current.skippedFrames++;
+        }
+      } catch (error) {
+        console.error('Frame processing error:', error);
+        performanceSettings.current.skippedFrames++;
+      } finally {
+        processingFrame.current = false;
       }
-    } catch (error) {
-      console.error('Error detecting emotion:', error);
-      setError('Failed to detect emotion');
-    } finally {
-      setIsLoading(false);
     }
-  }, [onEmotionDetected, isLoading, isModelLoaded, detectionSensitivity, showLandmarks]);
 
+    rafId.current = requestAnimationFrame(processFrame);
+  }, [isModelLoaded, onEmotionDetected, detectionFrequency, showLandmarks, drawDetections]);
+
+  // Start/stop frame processing
   useEffect(() => {
-    if (isAutoDetecting && isModelLoaded) {
-      intervalRef.current = setInterval(captureImage, detectionFrequency);
-
+    if (isAutoDetecting && isModelLoaded && webcamRef.current?.video) {
+      // Start processing frames
+      processFrame();
+      
       return () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
+        // Cleanup
+        if (rafId.current) {
+          cancelAnimationFrame(rafId.current);
+          rafId.current = null;
         }
       };
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
     }
-  }, [captureImage, detectionFrequency, isAutoDetecting, isModelLoaded]);
+  }, [isAutoDetecting, isModelLoaded, processFrame]);
+
+  // Remove the old interval-based detection
+  useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
 
   if (!hasWebcamPermission) {
     return (
@@ -546,14 +654,6 @@ const WebcamCapture = ({
         >
           Expressions
         </button>
-        <button
-          onClick={() => setShowAgeGender(prev => !prev)}
-          className={`px-3 py-1 rounded-md text-sm ${
-            showAgeGender ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
-          }`}
-        >
-          Age/Gender
-        </button>
       </div>
 
       {/* Sensitivity Slider */}
@@ -571,22 +671,8 @@ const WebcamCapture = ({
           className="w-full"
         />
       </div>
-      
-      {!isAutoDetecting && (
-        <button
-          onClick={captureImage}
-          disabled={isLoading || !isModelLoaded}
-          className={`
-            absolute bottom-4 right-4 px-4 py-2 rounded-full
-            bg-white shadow-lg text-sm font-medium
-            transition-all transform hover:scale-105
-            ${(isLoading || !isModelLoaded) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}
-          `}
-        >
-          {isLoading ? 'Detecting...' : 'Detect Emotion'}
-        </button>
-      )}
-      
+
+      {/* Loading and error states */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-lg">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
