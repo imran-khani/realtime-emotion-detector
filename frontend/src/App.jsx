@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import WebcamCapture from './components/WebcamCapture'
 import EmotionDisplay from './components/EmotionDisplay'
 import EmotionHistory from './components/EmotionHistory'
+import EmotionStats from './components/EmotionStats'
 
 function App() {
   const [emotionData, setEmotionData] = useState({
@@ -32,6 +33,23 @@ function App() {
     });
   }, []);
 
+  const handleClearHistory = useCallback(() => {
+    setEmotionHistory([]);
+  }, []);
+
+  const handleDownloadHistory = useCallback(() => {
+    const historyData = JSON.stringify(emotionHistory, null, 2);
+    const blob = new Blob([historyData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `emotion-history-${new Date().toISOString()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [emotionHistory]);
+
   return (
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-3xl mx-auto px-4">
@@ -46,7 +64,23 @@ function App() {
             confidence={emotionData.confidence} 
           />
           
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              onClick={handleClearHistory}
+              className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+            >
+              Clear History
+            </button>
+            <button
+              onClick={handleDownloadHistory}
+              className="px-3 py-1 text-sm text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors"
+            >
+              Download History
+            </button>
+          </div>
+
           <EmotionHistory history={emotionHistory} />
+          <EmotionStats history={emotionHistory} />
           
           <div className="mt-4 text-sm text-gray-500">
             <p>Note: For best results:</p>
