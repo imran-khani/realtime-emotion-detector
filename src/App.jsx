@@ -14,52 +14,91 @@ function App() {
       confidence: emotionData.confidence
     });
 
-    // Add to history
     setEmotionHistory(prev => [...prev, {
       emotion: emotionData.emotion,
       confidence: emotionData.confidence,
       timestamp: emotionData.timestamp,
       expressions: emotionData.expressions
-    }].slice(-300)); // Keep last 5 minutes of data (at 1 sample per second)
+    }].slice(-300));
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        <header className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            EmotiSense - Emotion-Aware Chat Assistant
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            AI chat assistant that understands and responds to your emotions in real-time
-          </p>
-        </header>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-400">
+                EmotiSense
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                AI-powered emotional intelligence assistant
+              </p>
+            </div>
+            {currentEmotion && (
+              <div className="hidden sm:block">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Current Emotion:</span>
+                <span className="ml-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-sm font-medium">
+                  {currentEmotion.emotion} ({(currentEmotion.confidence * 100).toFixed(0)}%)
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <WebcamCapture
-              onEmotionDetected={handleEmotionDetected}
-              detectionFrequency={1000} // 1 detection per second
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {currentEmotion && (
-                <EmotionDisplay
-                  emotion={currentEmotion.emotion}
-                  confidence={currentEmotion.confidence}
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 space-y-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="p-2 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-800/20">
+                <h2 className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Emotion Detection
+                </h2>
+              </div>
+              <div className="aspect-[4/3] relative">
+                <WebcamCapture
+                  onEmotionDetected={handleEmotionDetected}
+                  detectionFrequency={1000}
                 />
-              )}
+              </div>
+            </div>
+
+            {currentEmotion && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="p-2 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-800/20">
+                  <h2 className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                    Current Emotion
+                  </h2>
+                </div>
+                <div className="p-3">
+                  <EmotionDisplay
+                    emotion={currentEmotion.emotion}
+                    confidence={currentEmotion.confidence}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-800/20">
+              <h2 className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                Emotion Analytics
+              </h2>
+            </div>
+            <div className="p-4">
               <EmotionAnalytics emotionHistory={emotionHistory} />
             </div>
           </div>
-
-          <div className="lg:col-span-1">
-            <ChatInterface
-              currentEmotion={currentEmotion?.emotion}
-              confidence={currentEmotion?.confidence || 0}
-            />
-          </div>
         </div>
-      </div>
+      </main>
+
+      {/* Floating Chat Interface */}
+      <ChatInterface
+        currentEmotion={currentEmotion?.emotion}
+        confidence={currentEmotion?.confidence || 0}
+      />
     </div>
   );
 }

@@ -31,7 +31,7 @@ const WebcamCapture = ({
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [showLandmarks, setShowLandmarks] = useState(false);
   const [showFeatures, setShowFeatures] = useState(false);
-  const [showExpressions, setShowExpressions] = useState(true);
+  const [showExpressions, setShowExpressions] = useState(false);
   const [showTracking, setShowTracking] = useState(false);
   const [showMesh, setShowMesh] = useState(false);
   const [detectionSensitivity, setDetectionSensitivity] = useState(0.5);
@@ -402,34 +402,6 @@ const WebcamCapture = ({
       drawLine(mesh.positions[67], mesh.positions[60]);
     }
 
-    // Draw expressions
-    if (showExpressions) {
-      const expressions = detections.expressions;
-      const barWidth = 100;
-      const barHeight = 10;
-      let startY = 10;
-
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(10, startY - 5, 200, Object.keys(expressions).length * 20 + 10);
-
-      Object.entries(expressions).forEach(([expression, confidence]) => {
-        // Background bar
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.fillRect(15, startY, barWidth, barHeight);
-        
-        // Confidence bar
-        ctx.fillStyle = '#00ff00';
-        ctx.fillRect(15, startY, barWidth * confidence, barHeight);
-        
-        // Label
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '12px Arial';
-        ctx.fillText(`${expression}: ${(confidence * 100).toFixed(0)}%`, 120, startY + 8);
-        
-        startY += 20;
-      });
-    }
-
     // Update tracking history
     updateTrackingHistory(detections);
   };
@@ -570,103 +542,65 @@ const WebcamCapture = ({
   }
 
   return (
-    <div className="relative">
-      <div className="relative">
-        <Webcam
-          ref={webcamRef}
-          audio={false}
-          screenshotFormat="image/jpeg"
-          className="w-full rounded-lg shadow-lg"
-          videoConstraints={{
-            width: 640,
-            height: 480,
-            facingMode: "user"
-          }}
-        />
-        <canvas
-          ref={canvasRef}
-          className="absolute top-0 left-0 w-full h-full"
-        />
-      </div>
-
-      {/* Controls */}
-      <div className="mt-4 flex flex-wrap gap-4">
+    <div className="relative w-full h-full">
+      <Webcam
+        ref={webcamRef}
+        audio={false}
+        screenshotFormat="image/jpeg"
+        className="w-full h-full object-cover rounded-none"
+        videoConstraints={{
+          width: 320,
+          height: 240,
+          facingMode: "user"
+        }}
+      />
+      <canvas
+        ref={canvasRef}
+        className="absolute top-0 left-0 w-full h-full"
+      />
+      
+      {/* Compact Controls */}
+      <div className="absolute bottom-2 right-2 flex gap-1">
         <button
           onClick={() => setShowLandmarks(prev => !prev)}
-          className={`px-3 py-1 rounded-md text-sm ${
-            showLandmarks ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
-          }`}
+          className={`p-1 rounded-full ${
+            showLandmarks ? 'bg-indigo-600 text-white' : 'bg-white/80 text-gray-700'
+          } hover:bg-indigo-500 hover:text-white transition-colors text-xs`}
+          title="Toggle Landmarks"
         >
-          Landmarks
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
         </button>
-        <button
-          onClick={() => setShowFeatures(prev => !prev)}
-          className={`px-3 py-1 rounded-md text-sm ${
-            showFeatures ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
-          }`}
-        >
-          Feature Labels
-        </button>
-        <button
-          onClick={() => setShowTracking(prev => !prev)}
-          className={`px-3 py-1 rounded-md text-sm ${
-            showTracking ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
-          }`}
-        >
-          Face Tracking
-        </button>
-        <button
-          onClick={() => setShowMesh(prev => !prev)}
-          className={`px-3 py-1 rounded-md text-sm ${
-            showMesh ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
-          }`}
-        >
-          Face Mesh
-        </button>
-        <button
-          onClick={() => setShowExpressions(prev => !prev)}
-          className={`px-3 py-1 rounded-md text-sm ${
-            showExpressions ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
-          }`}
-        >
-          Expressions
-        </button>
-      </div>
-
-      {/* Sensitivity Slider */}
-      <div className="mt-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Detection Sensitivity: {(detectionSensitivity * 100).toFixed(0)}%
-        </label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.1"
-          value={detectionSensitivity}
-          onChange={(e) => setDetectionSensitivity(parseFloat(e.target.value))}
-          className="w-full"
-        />
       </div>
 
       {/* Loading and error states */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-lg">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
         </div>
       )}
       
       {error && (
-        <div className="mt-2 p-2 bg-red-50 text-red-700 rounded-lg text-sm">
-          {error}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg p-4 m-2 text-center">
+            <p className="text-red-600 text-sm">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-2 px-3 py-1 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       )}
 
       {!isModelLoaded && !error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 rounded-lg">
-          <div className="text-white text-center">
-            <p className="text-lg font-semibold mb-2">Loading detection models...</p>
-            <p className="text-sm opacity-80">This may take a few moments</p>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+          <div className="text-white text-center p-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-white mx-auto mb-2"></div>
+            <p className="text-sm">Loading detection models...</p>
           </div>
         </div>
       )}
