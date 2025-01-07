@@ -152,6 +152,43 @@ const LandingPage = ({ onGetStarted }) => {
             </Button>
           </div>
         </motion.div>
+
+        {/* Team Members */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.8, duration: 0.5 }}
+          className="mt-24 text-center"
+        >
+          <div className="bg-gradient-to-r from-indigo-900/30 to-indigo-800/30 rounded-2xl p-8 border border-indigo-700/20">
+            <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-indigo-300 mb-3">
+              Final Year Project
+            </h2>
+            <div className="mb-8">
+              <h3 className="text-xl font-semibold text-gray-200 mb-1">University of Agriculture, Peshawar</h3>
+              <p className="text-indigo-400">Department of Computer Science</p>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+              <div className="bg-gray-800/40 rounded-xl p-6 border border-indigo-700/20 hover:border-indigo-500/40 transition-colors">
+                <div className="text-lg font-medium text-gray-200 mb-1">Imran Khan</div>
+                <div className="text-sm text-indigo-400">Team Lead</div>
+              </div>
+              <div className="bg-gray-800/40 rounded-xl p-6 border border-indigo-700/20 hover:border-indigo-500/40 transition-colors">
+                <div className="text-lg font-medium text-gray-200 mb-1">Ubaid Ullah</div>
+                <div className="text-sm text-indigo-400">Team Member</div>
+              </div>
+              <div className="bg-gray-800/40 rounded-xl p-6 border border-indigo-700/20 hover:border-indigo-500/40 transition-colors">
+                <div className="text-lg font-medium text-gray-200 mb-1">Saqib Khan</div>
+                <div className="text-sm text-indigo-400">Team Member</div>
+              </div>
+            </div>
+
+            <div className="mt-8 text-sm text-gray-400">
+              Supervised by: <span className="text-indigo-400">Dr. Example Name</span>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

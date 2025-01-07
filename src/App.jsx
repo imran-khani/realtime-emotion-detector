@@ -6,6 +6,7 @@ import ChatInterface from './components/ChatInterface'
 import EmotionJournal from './components/EmotionJournal'
 import EmotionalFeedback from './components/EmotionalFeedback'
 import LandingPage from './components/LandingPage'
+import EmotionInsights from './components/EmotionInsights'
 
 function App() {
   const [showApp, setShowApp] = useState(false);
@@ -76,7 +77,7 @@ function App() {
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 space-y-4">
+          <div className="space-y-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="p-2 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-800/20">
                 <h2 className="text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -111,7 +112,7 @@ function App() {
           </div>
 
           <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-800/20">
+            <div className="p-2 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-800/20">
               <h2 className="text-sm font-medium text-gray-700 dark:text-gray-200">
                 Emotion Analytics
               </h2>
@@ -120,14 +121,18 @@ function App() {
               <EmotionAnalytics emotionHistory={emotionHistory} />
             </div>
           </div>
+        </div>
 
-          <div className="lg:col-span-1">
-            <EmotionJournal emotionHistory={emotionHistory} />
-            <ChatInterface 
-              currentEmotion={currentEmotion?.emotion} 
-              emotionHistory={emotionHistory} 
-            />
-          </div>
+        <div className="mt-6 grid grid-cols-2 gap-6">
+          <EmotionJournal emotionHistory={emotionHistory} />
+          <EmotionInsights emotionHistory={emotionHistory} />
+        </div>
+
+        <div className="mt-6">
+          <ChatInterface 
+            currentEmotion={currentEmotion?.emotion} 
+            emotionHistory={emotionHistory} 
+          />
         </div>
       </main>
     </div>
