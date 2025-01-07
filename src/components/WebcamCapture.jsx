@@ -2,9 +2,9 @@ import { useRef, useCallback, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
 
 const MODELS_URLS = [
+  '/models', // Prioritize local models
   'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights',
-  'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights',
-  '/models'
+  'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights'
 ];
 
 const LANDMARK_COLORS = {
@@ -19,7 +19,7 @@ const LANDMARK_COLORS = {
 
 const WebcamCapture = ({ 
   onEmotionDetected,
-  detectionFrequency = 10, // Increased to ~100fps for smoother detection
+  detectionFrequency = 10,
   isAutoDetecting = true
 }) => {
   const webcamRef = useRef(null);
@@ -29,7 +29,6 @@ const WebcamCapture = ({
   const [error, setError] = useState(null);
   const [hasWebcamPermission, setHasWebcamPermission] = useState(true);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
-  const [showDetectionBox, setShowDetectionBox] = useState(true);
   const [showLandmarks, setShowLandmarks] = useState(false);
   const [showFeatures, setShowFeatures] = useState(false);
   const [showExpressions, setShowExpressions] = useState(true);
@@ -58,13 +57,13 @@ const WebcamCapture = ({
   // Optimized performance settings
   const performanceSettings = useRef({
     lastDrawTime: 0,
-    drawFrequency: 10, // 100fps for drawing
-    minProcessingTime: 5, // Lower threshold for better responsiveness
+    drawFrequency: 30, // 30fps for smoother balance
+    minProcessingTime: 30, // Balance between performance and smoothness
     skippedFrames: 0,
-    maxSkippedFrames: 1,
-    bufferSize: 5, // Increased buffer size for smoother transitions
+    maxSkippedFrames: 3,
+    bufferSize: 4, // Balanced buffer size
     detectionBuffer: [],
-    smoothingFactor: 0.8 // Higher smoothing factor
+    smoothingFactor: 0.7 // Balanced smoothing
   });
 
   // Add faceapi state
@@ -134,7 +133,7 @@ const WebcamCapture = ({
           try {
             console.log(`Loading models from ${modelUrl}...`);
             
-            // Load only required models for better performance
+            // Load all required models
             await Promise.all([
               faceapiModule.nets.tinyFaceDetector.loadFromUri(modelUrl),
               faceapiModule.nets.faceExpressionNet.loadFromUri(modelUrl),
@@ -161,7 +160,7 @@ const WebcamCapture = ({
     };
 
     loadModels();
-  }, []);
+  }, []); // Remove showLandmarks dependency
 
   // Setup canvas overlay
   useEffect(() => {
@@ -351,20 +350,6 @@ const WebcamCapture = ({
     // Draw tracking path first (behind everything else)
     drawTrackingPath(ctx);
 
-    // Draw face detection box
-    if (showDetectionBox) {
-      const box = detections.detection.box;
-      ctx.strokeStyle = '#00ff00';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(box.x, box.y, box.width, box.height);
-
-      // Draw center point
-      ctx.fillStyle = '#ff0000';
-      ctx.beginPath();
-      ctx.arc(box.x + box.width/2, box.y + box.height/2, 3, 0, 2 * Math.PI);
-      ctx.fill();
-    }
-
     // Draw detailed facial landmarks
     if (showLandmarks) {
       drawFacialLandmarks(ctx, detections.landmarks);
@@ -487,13 +472,13 @@ const WebcamCapture = ({
       try {
         // Optimized detection options
         const detectionOptions = new faceapi.TinyFaceDetectorOptions({
-          inputSize: 160,
-          scoreThreshold: 0.3
+          inputSize: 160, // Back to original size
+          scoreThreshold: 0.3 // Back to original threshold
         });
 
         const detections = await faceapi
           .detectSingleFace(video, detectionOptions)
-          .withFaceLandmarks(true, true)
+          .withFaceLandmarks(true)
           .withFaceExpressions();
 
         if (detections) {
@@ -606,14 +591,6 @@ const WebcamCapture = ({
 
       {/* Controls */}
       <div className="mt-4 flex flex-wrap gap-4">
-        <button
-          onClick={() => setShowDetectionBox(prev => !prev)}
-          className={`px-3 py-1 rounded-md text-sm ${
-            showDetectionBox ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
-          }`}
-        >
-          Face Box
-        </button>
         <button
           onClick={() => setShowLandmarks(prev => !prev)}
           className={`px-3 py-1 rounded-md text-sm ${
