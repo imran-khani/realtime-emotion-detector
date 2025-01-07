@@ -526,21 +526,21 @@ Keep your response supportive, understanding, and concise. [/INST]`;
                         <span className="text-indigo-600 dark:text-indigo-400 text-sm">AI</span>
                       </div>
                       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-bl-none p-3">
-                        <div className="flex space-x-1">
+                        <div className="flex space-x-2">
                           <motion.div
-                            animate={{ y: [0, -5, 0] }}
-                            transition={{ repeat: Infinity, duration: 0.5 }}
-                            className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full"
+                            animate={{ y: [0, -3, 0] }}
+                            transition={{ repeat: Infinity, duration: 1.2 }}
+                            className="w-3 h-3 bg-gray-400 dark:bg-gray-500 rounded-full"
                           />
                           <motion.div
-                            animate={{ y: [0, -5, 0] }}
-                            transition={{ repeat: Infinity, duration: 0.5, delay: 0.1 }}
-                            className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full"
+                            animate={{ y: [0, -3, 0] }}
+                            transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }}
+                            className="w-3 h-3 bg-gray-400 dark:bg-gray-500 rounded-full"
                           />
                           <motion.div
-                            animate={{ y: [0, -5, 0] }}
-                            transition={{ repeat: Infinity, duration: 0.5, delay: 0.2 }}
-                            className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full"
+                            animate={{ y: [0, -3, 0] }}
+                            transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }}
+                            className="w-3 h-3 bg-gray-400 dark:bg-gray-500 rounded-full"
                           />
                         </div>
                       </div>

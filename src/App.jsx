@@ -4,6 +4,7 @@ import EmotionDisplay from './components/EmotionDisplay'
 import EmotionAnalytics from './components/EmotionAnalytics'
 import ChatInterface from './components/ChatInterface'
 import EmotionJournal from './components/EmotionJournal'
+import EmotionalFeedback from './components/EmotionalFeedback'
 
 function App() {
   const [currentEmotion, setCurrentEmotion] = useState(null);
@@ -113,6 +114,7 @@ function App() {
           </div>
 
           <div className="lg:col-span-1">
+            <EmotionalFeedback currentEmotion={currentEmotion?.emotion} emotionHistory={emotionHistory} />
             <EmotionJournal emotionHistory={emotionHistory} />
             <ChatInterface 
               currentEmotion={currentEmotion?.emotion} 
