@@ -228,7 +228,7 @@ const EmotionJournal = ({ emotionHistory }) => {
             Your Dominant Emotion
           </Typography>
           <Chip
-            label={dominantEmotion}
+            label={typeof dominantEmotion === 'string' ? dominantEmotion : dominantEmotion.emotion}
             color="primary"
             variant="outlined"
             sx={{ fontSize: '1rem' }}
@@ -243,7 +243,7 @@ const EmotionJournal = ({ emotionHistory }) => {
         {insights.map((insight, index) => (
           <ListItem key={index}>
             <ListItemText
-              primary={insight.text}
+              primary={typeof insight.text === 'string' ? insight.text : JSON.stringify(insight.text)}
               secondary={
                 insight.type === 'stability' && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
@@ -272,7 +272,7 @@ const EmotionJournal = ({ emotionHistory }) => {
             {patterns.map((pattern, index) => (
               <ListItem key={index}>
                 <ListItemText
-                  primary={pattern.emotion + ' streak of ' + pattern.streak + ' occurrences'}
+                  primary={`${pattern.emotion} streak of ${pattern.streak} occurrences`}
                   secondary={
                     <Typography variant="body2" component="span" color="text.secondary">
                       {new Date(pattern.timestamp).toLocaleDateString()}
