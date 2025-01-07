@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Typography, Divider, List, ListItem, ListItemText, Chip, Box, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Card, Typography, Divider, List, ListItem, ListItemText, Chip, Box } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TimelineIcon from '@mui/icons-material/Timeline';
@@ -9,16 +9,14 @@ const EmotionJournal = ({ emotionHistory }) => {
   const [insights, setInsights] = useState([]);
   const [patterns, setPatterns] = useState([]);
   const [dominantEmotion, setDominantEmotion] = useState(null);
-  const [timeRange, setTimeRange] = useState('today');
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
   useEffect(() => {
     if (emotionHistory && emotionHistory.length > 0) {
       analyzeEmotions(emotionHistory);
-      // Update timestamp
       setLastUpdate(new Date());
     }
-  }, [emotionHistory, timeRange]);
+  }, [emotionHistory]);
 
   // Auto-update every minute
   useEffect(() => {
@@ -30,33 +28,18 @@ const EmotionJournal = ({ emotionHistory }) => {
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [emotionHistory, timeRange]);
+  }, [emotionHistory]);
 
   const getFilteredHistory = (history) => {
     const now = new Date();
     const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekStart = new Date(now.setDate(now.getDate() - 7));
-    const monthStart = new Date(now.setDate(now.getDate() - 30));
-
-    return history.filter(entry => {
-      const entryDate = new Date(entry.timestamp);
-      switch (timeRange) {
-        case 'today':
-          return entryDate >= dayStart;
-        case 'week':
-          return entryDate >= weekStart;
-        case 'month':
-          return entryDate >= monthStart;
-        default:
-          return true;
-      }
-    });
+    return history.filter(entry => new Date(entry.timestamp) >= dayStart);
   };
 
   const analyzeEmotions = (history) => {
     const filteredHistory = getFilteredHistory(history);
     if (filteredHistory.length === 0) {
-      setInsights([{ type: 'info', text: 'No emotions recorded in this time period' }]);
+      setInsights([{ type: 'info', text: 'No emotions recorded today' }]);
       setPatterns([]);
       setDominantEmotion(null);
       return;
@@ -187,103 +170,89 @@ const EmotionJournal = ({ emotionHistory }) => {
     return Math.max(0, Math.min(10, stabilityScore));
   };
 
-  const handleTimeRangeChange = (event, newRange) => {
-    if (newRange !== null) {
-      setTimeRange(newRange);
-    }
-  };
-
   return (
-    <Card sx={{ p: 3, m: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <TimelineIcon color="primary" />
-          <Typography variant="h5" component="div">
-            Emotion Journal
-          </Typography>
-        </Box>
-        <Typography variant="caption" component="div" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <UpdateIcon fontSize="small" />
-          Updated {lastUpdate.toLocaleTimeString()}
-        </Typography>
-      </Box>
+    <Card className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="p-2 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-800/20">
+        <h2 className="text-sm font-medium text-gray-700 dark:text-gray-200 flex items-center gap-2">
+          <TimelineIcon className="text-indigo-500" sx={{ fontSize: 20 }} />
+          Emotion Journal
+        </h2>
+      </div>
 
-      <ToggleButtonGroup
-        value={timeRange}
-        exclusive
-        onChange={handleTimeRangeChange}
-        size="small"
-        sx={{ mb: 2 }}
-      >
-        <ToggleButton value="today">Today</ToggleButton>
-        <ToggleButton value="week">This Week</ToggleButton>
-        <ToggleButton value="month">This Month</ToggleButton>
-      </ToggleButtonGroup>
-
-      <Divider sx={{ my: 2 }} />
-
-      {dominantEmotion && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" component="div" gutterBottom>
-            Your Dominant Emotion
-          </Typography>
-          <Chip
-            label={typeof dominantEmotion === 'string' ? dominantEmotion : dominantEmotion.emotion}
-            color="primary"
-            variant="outlined"
-            sx={{ fontSize: '1rem' }}
-          />
-        </Box>
-      )}
-
-      <Typography variant="subtitle1" component="div" gutterBottom>
-        Personal Insights
-      </Typography>
-      <List>
-        {insights.map((insight, index) => (
-          <ListItem key={index}>
-            <ListItemText
-              primary={typeof insight.text === 'string' ? insight.text : JSON.stringify(insight.text)}
-              secondary={
-                insight.type === 'stability' && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                    {insight.score >= 7 ? (
-                      <TrendingUpIcon color="success" />
-                    ) : (
-                      <TrendingDownIcon color="error" />
-                    )}
-                    <Typography variant="body2" component="span" color="text.secondary">
-                      {insight.score >= 7 ? 'High stability' : 'Variable emotions'}
-                    </Typography>
-                  </Box>
-                )
-              }
+      <div className="p-4 space-y-4">
+        {dominantEmotion && (
+          <div className="mb-4">
+            <Typography variant="subtitle2" className="text-gray-600 dark:text-gray-300 mb-2">
+              Your Dominant Emotion Today
+            </Typography>
+            <Chip
+              label={typeof dominantEmotion === 'string' ? dominantEmotion : dominantEmotion.emotion}
+              color="primary"
+              variant="outlined"
+              sx={{ fontSize: '0.875rem' }}
             />
-          </ListItem>
-        ))}
-      </List>
+          </div>
+        )}
 
-      {patterns.length > 0 && (
-        <>
-          <Typography variant="subtitle1" component="div" gutterBottom sx={{ mt: 2 }}>
-            Recent Patterns
+        <div>
+          <Typography variant="subtitle2" className="text-gray-600 dark:text-gray-300 mb-2">
+            Today's Insights
           </Typography>
-          <List>
-            {patterns.map((pattern, index) => (
-              <ListItem key={index}>
+          <List className="space-y-2">
+            {insights.map((insight, index) => (
+              <ListItem key={index} className="px-0">
                 <ListItemText
-                  primary={`${pattern.emotion} streak of ${pattern.streak} occurrences`}
-                  secondary={
-                    <Typography variant="body2" component="span" color="text.secondary">
-                      {new Date(pattern.timestamp).toLocaleDateString()}
+                  primary={
+                    <Typography variant="body2" className="text-gray-500 dark:text-gray-400">
+                      {typeof insight.text === 'string' ? insight.text : JSON.stringify(insight.text)}
                     </Typography>
+                  }
+                  secondary={
+                    insight.type === 'stability' && (
+                      <Box className="flex items-center gap-2 mt-1">
+                        {insight.score >= 7 ? (
+                          <TrendingUpIcon className="text-green-500" sx={{ fontSize: 16 }} />
+                        ) : (
+                          <TrendingDownIcon className="text-red-500" sx={{ fontSize: 16 }} />
+                        )}
+                        <Typography variant="caption" className="text-gray-400 dark:text-gray-500">
+                          {insight.score >= 7 ? 'High stability' : 'Variable emotions'}
+                        </Typography>
+                      </Box>
+                    )
                   }
                 />
               </ListItem>
             ))}
           </List>
-        </>
-      )}
+        </div>
+
+        {patterns.length > 0 && (
+          <div>
+            <Typography variant="subtitle2" className="text-gray-600 dark:text-gray-300 mb-2">
+              Recent Patterns
+            </Typography>
+            <List className="space-y-2">
+              {patterns.map((pattern, index) => (
+                <ListItem key={index} className="px-0">
+                  <ListItemText
+                    primary={
+                      <Typography variant="body2" className="text-gray-500 dark:text-gray-400">
+                        {`${pattern.emotion} streak of ${pattern.streak} occurrences`}
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography variant="caption" className="text-gray-400 dark:text-gray-500">
+                        {new Date(pattern.timestamp).toLocaleTimeString()}
+                      </Typography>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </div>
+        )}
+      </div>
     </Card>
   );
 };
