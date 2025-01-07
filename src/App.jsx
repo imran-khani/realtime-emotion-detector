@@ -100,6 +100,8 @@ function App() {
                 </div>
               </div>
             )}
+
+            <EmotionalFeedback currentEmotion={currentEmotion?.emotion} />
           </div>
 
           <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -114,7 +116,6 @@ function App() {
           </div>
 
           <div className="lg:col-span-1">
-            <EmotionalFeedback currentEmotion={currentEmotion?.emotion} emotionHistory={emotionHistory} />
             <EmotionJournal emotionHistory={emotionHistory} />
             <ChatInterface 
               currentEmotion={currentEmotion?.emotion} 

@@ -23,10 +23,11 @@ ChartJS.register(
 
 const EmotionAnalytics = ({ emotionHistory }) => {
   const [emotionData, setEmotionData] = useState([]);
-  const [timeRange, setTimeRange] = useState('1m'); // 1m, 5m, 15m, 30m
+  const [timeRange, setTimeRange] = useState('1m');
   const [dominantEmotion, setDominantEmotion] = useState(null);
   const [emotionTransitions, setEmotionTransitions] = useState([]);
-  
+  const chartRef = useRef(null);
+
   // Process emotion data for visualization
   useEffect(() => {
     if (!emotionHistory.length) return;
@@ -50,31 +51,104 @@ const EmotionAnalytics = ({ emotionHistory }) => {
         transitions.push({ from, to, timestamp: emotionHistory[i].timestamp });
       }
     }
-    setEmotionTransitions(transitions);
+    setEmotionTransitions(transitions.slice(-3));
+
+    // Get data for selected time range
+    const now = Date.now();
+    const timeRangeMs = {
+      '1m': 60 * 1000,
+      '5m': 5 * 60 * 1000,
+      '15m': 15 * 60 * 1000,
+      '30m': 30 * 60 * 1000
+    }[timeRange];
+
+    const filteredData = emotionHistory.filter(entry => 
+      (now - entry.timestamp) <= timeRangeMs
+    );
+
+    // If no data in current range, reset time range
+    if (filteredData.length === 0) {
+      setTimeRange('1m');
+      return;
+    }
 
     // Prepare chart data
-    const chartData = emotionHistory.map(entry => ({
-      timestamp: new Date(entry.timestamp).toLocaleTimeString(),
+    const chartData = filteredData.map(entry => ({
+      timestamp: new Date(entry.timestamp).toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+      }),
       ...entry.expressions
     }));
+
     setEmotionData(chartData);
-  }, [emotionHistory]);
+  }, [emotionHistory, timeRange]);
 
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
+    animation: {
+      duration: 300
+    },
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
     plugins: {
       legend: {
         position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          font: {
+            size: 12
+          },
+          color: '#6B7280'
+        }
       },
-      title: {
-        display: true,
-        text: 'Emotion Intensity Over Time'
+      tooltip: {
+        backgroundColor: 'rgba(17, 24, 39, 0.8)',
+        padding: 12,
+        titleFont: {
+          size: 14
+        },
+        bodyFont: {
+          size: 13
+        },
+        borderColor: 'rgba(107, 114, 128, 0.2)',
+        borderWidth: 1
       }
     },
     scales: {
       y: {
         beginAtZero: true,
-        max: 1
+        max: 1,
+        grid: {
+          color: 'rgba(107, 114, 128, 0.1)',
+          drawBorder: false
+        },
+        ticks: {
+          color: '#6B7280',
+          font: {
+            size: 11
+          },
+          padding: 8,
+          stepSize: 0.2
+        }
+      },
+      x: {
+        grid: {
+          display: false
+        },
+        ticks: {
+          color: '#6B7280',
+          font: {
+            size: 11
+          },
+          maxRotation: 45,
+          minRotation: 45
+        }
       }
     }
   };
@@ -85,54 +159,62 @@ const EmotionAnalytics = ({ emotionHistory }) => {
       {
         label: 'Happy',
         data: emotionData.map(d => d.happy),
-        borderColor: 'rgb(75, 192, 192)',
+        borderColor: 'rgb(34, 197, 94)',
+        backgroundColor: 'rgba(34, 197, 94, 0.5)',
+        borderWidth: 2,
+        pointRadius: 1,
+        pointHoverRadius: 5,
         tension: 0.4
       },
       {
         label: 'Sad',
         data: emotionData.map(d => d.sad),
-        borderColor: 'rgb(54, 162, 235)',
+        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        borderWidth: 2,
+        pointRadius: 1,
+        pointHoverRadius: 5,
         tension: 0.4
       },
       {
         label: 'Angry',
         data: emotionData.map(d => d.angry),
-        borderColor: 'rgb(255, 99, 132)',
+        borderColor: 'rgb(239, 68, 68)',
+        backgroundColor: 'rgba(239, 68, 68, 0.5)',
+        borderWidth: 2,
+        pointRadius: 1,
+        pointHoverRadius: 5,
         tension: 0.4
       },
       {
         label: 'Surprised',
         data: emotionData.map(d => d.surprised),
-        borderColor: 'rgb(153, 102, 255)',
+        borderColor: 'rgb(168, 85, 247)',
+        backgroundColor: 'rgba(168, 85, 247, 0.5)',
+        borderWidth: 2,
+        pointRadius: 1,
+        pointHoverRadius: 5,
         tension: 0.4
       }
     ]
   });
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold mb-2">Emotion Summary</h3>
-          <p className="text-gray-600">Dominant Emotion: 
-            <span className="font-semibold ml-2 capitalize">{dominantEmotion}</span>
-          </p>
-          <p className="text-gray-600">Emotion Changes: 
-            <span className="font-semibold ml-2">{emotionTransitions.length}</span>
-          </p>
-        </div>
-        
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold mb-2">Time Range</h3>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+            Time Range
+          </h3>
           <div className="flex gap-2">
             {['1m', '5m', '15m', '30m'].map(range => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
-                className={`px-3 py-1 rounded ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   timeRange === range 
                     ? 'bg-indigo-600 text-white' 
-                    : 'bg-gray-200 text-gray-700'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
                 {range}
@@ -140,31 +222,34 @@ const EmotionAnalytics = ({ emotionHistory }) => {
             ))}
           </div>
         </div>
-      </div>
 
-      <div className="h-[400px]">
-        <Line options={chartOptions} data={getChartData()} />
-      </div>
-
-      {emotionTransitions.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-2">Recent Emotion Transitions</h3>
+        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+            Recent Transitions
+          </h3>
           <div className="space-y-2">
-            {emotionTransitions.slice(-3).map((transition, idx) => (
-              <div key={idx} className="flex items-center text-sm text-gray-600">
+            {emotionTransitions.map((transition, idx) => (
+              <div key={idx} className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                 <span className="capitalize">{transition.from}</span>
                 <svg className="w-4 h-4 mx-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
                 <span className="capitalize">{transition.to}</span>
-                <span className="ml-2 text-gray-400">
-                  {new Date(transition.timestamp).toLocaleTimeString()}
+                <span className="ml-2 text-gray-400 dark:text-gray-500">
+                  {new Date(transition.timestamp).toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })}
                 </span>
               </div>
             ))}
           </div>
         </div>
-      )}
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 h-[400px]">
+        <Line ref={chartRef} options={chartOptions} data={getChartData()} />
+      </div>
     </div>
   );
 };
