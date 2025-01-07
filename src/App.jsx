@@ -5,8 +5,10 @@ import EmotionAnalytics from './components/EmotionAnalytics'
 import ChatInterface from './components/ChatInterface'
 import EmotionJournal from './components/EmotionJournal'
 import EmotionalFeedback from './components/EmotionalFeedback'
+import LandingPage from './components/LandingPage'
 
 function App() {
+  const [showApp, setShowApp] = useState(false);
   const [currentEmotion, setCurrentEmotion] = useState(null);
   const [emotionHistory, setEmotionHistory] = useState(() => {
     const saved = localStorage.getItem('emotionHistory');
@@ -42,6 +44,10 @@ function App() {
     setEmotionHistory(newHistory);
     localStorage.setItem('emotionHistory', JSON.stringify(newHistory));
   };
+
+  if (!showApp) {
+    return <LandingPage onGetStarted={() => setShowApp(true)} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
