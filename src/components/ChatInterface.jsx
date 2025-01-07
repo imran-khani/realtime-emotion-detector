@@ -179,7 +179,7 @@ const getDefaultEmotion = (emotion) => {
 const HF_TOKEN = "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";
 const MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2";
 
-const ChatInterface = ({ currentEmotion, confidence }) => {
+const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -309,9 +309,60 @@ Keep your response supportive, understanding, and concise. [/INST]`;
     return getSmartResponse(userMessage, emotion);
   };
 
+  const analyzeEmotionHistory = () => {
+    if (!emotionHistory || emotionHistory.length === 0) return null;
+
+    const last10Minutes = emotionHistory.filter(entry => 
+      Date.now() - entry.timestamp < 10 * 60 * 1000
+    );
+
+    const emotionCounts = last10Minutes.reduce((acc, entry) => {
+      acc[entry.emotion] = (acc[entry.emotion] || 0) + 1;
+      return acc;
+    }, {});
+
+    const dominantEmotion = Object.entries(emotionCounts)
+      .reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+
+    const emotionChanges = last10Minutes.reduce((changes, entry, i, arr) => {
+      if (i > 0 && entry.emotion !== arr[i - 1].emotion) {
+        changes.push({
+          from: arr[i - 1].emotion,
+          to: entry.emotion,
+          timestamp: entry.timestamp
+        });
+      }
+      return changes;
+    }, []);
+
+    return {
+      dominantEmotion,
+      emotionChanges,
+      duration: last10Minutes.length > 0 ? 
+        Date.now() - last10Minutes[0].timestamp : 0
+    };
+  };
+
   const getSmartResponse = (userMessage, emotion) => {
+    const analysis = analyzeEmotionHistory();
     const currentEmotion = getDefaultEmotion(emotion);
     
+    // If we have emotion history analysis, use it for more contextual responses
+    if (analysis) {
+      // Check for emotional changes
+      if (analysis.emotionChanges.length > 0) {
+        const lastChange = analysis.emotionChanges[analysis.emotionChanges.length - 1];
+        if (Date.now() - lastChange.timestamp < 60000) { // Within last minute
+          return `I notice your mood has shifted from ${lastChange.from} to ${lastChange.to}. Would you like to talk about what triggered this change?`;
+        }
+      }
+
+      // Check for persistent emotions
+      if (analysis.dominantEmotion === currentEmotion && analysis.duration > 5 * 60 * 1000) {
+        return `I've noticed you've been feeling ${currentEmotion} for a while now. How are you coping with these feelings?`;
+      }
+    }
+
     // Check for activity-related keywords
     if (userMessage.toLowerCase().includes('activity') || 
         userMessage.toLowerCase().includes('suggestion') ||

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import WebcamCapture from './components/WebcamCapture'
 import EmotionDisplay from './components/EmotionDisplay'
 import EmotionAnalytics from './components/EmotionAnalytics'
@@ -6,7 +6,23 @@ import ChatInterface from './components/ChatInterface'
 
 function App() {
   const [currentEmotion, setCurrentEmotion] = useState(null);
-  const [emotionHistory, setEmotionHistory] = useState([]);
+  const [emotionHistory, setEmotionHistory] = useState(() => {
+    const saved = localStorage.getItem('emotionHistory');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Load emotion history on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('emotionHistory');
+    if (saved) {
+      setEmotionHistory(JSON.parse(saved));
+    }
+  }, []);
+
+  // Save emotion history when it changes
+  useEffect(() => {
+    localStorage.setItem('emotionHistory', JSON.stringify(emotionHistory));
+  }, [emotionHistory]);
 
   const handleEmotionDetected = (emotionData) => {
     setCurrentEmotion({
@@ -14,12 +30,15 @@ function App() {
       confidence: emotionData.confidence
     });
 
-    setEmotionHistory(prev => [...prev, {
+    const newHistory = [...emotionHistory, {
       emotion: emotionData.emotion,
       confidence: emotionData.confidence,
-      timestamp: emotionData.timestamp,
+      timestamp: Date.now(),
       expressions: emotionData.expressions
-    }].slice(-300));
+    }].slice(-300); // Keep last 300 entries
+
+    setEmotionHistory(newHistory);
+    localStorage.setItem('emotionHistory', JSON.stringify(newHistory));
   };
 
   return (
@@ -98,6 +117,7 @@ function App() {
       <ChatInterface
         currentEmotion={currentEmotion?.emotion}
         confidence={currentEmotion?.confidence || 0}
+        emotionHistory={emotionHistory}
       />
     </div>
   );
