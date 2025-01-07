@@ -3,6 +3,8 @@ import WebcamCapture from './components/WebcamCapture'
 import EmotionDisplay from './components/EmotionDisplay'
 import EmotionAnalytics from './components/EmotionAnalytics'
 import ChatInterface from './components/ChatInterface'
+import EmotionJournal from './components/EmotionJournal'
+import { Grid } from '@mui/material'
 
 function App() {
   const [currentEmotion, setCurrentEmotion] = useState(null);
@@ -110,15 +112,13 @@ function App() {
               <EmotionAnalytics emotionHistory={emotionHistory} />
             </div>
           </div>
+
+          <div className="lg:col-span-1">
+            <EmotionJournal emotionHistory={emotionHistory} />
+            <ChatInterface currentEmotion={currentEmotion} emotionHistory={emotionHistory} />
+          </div>
         </div>
       </main>
-
-      {/* Floating Chat Interface */}
-      <ChatInterface
-        currentEmotion={currentEmotion?.emotion}
-        confidence={currentEmotion?.confidence || 0}
-        emotionHistory={emotionHistory}
-      />
     </div>
   );
 }
