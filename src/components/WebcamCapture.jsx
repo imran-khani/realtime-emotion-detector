@@ -407,7 +407,7 @@ const WebcamCapture = ({
   };
 
   const processFrame = useCallback(async () => {
-    if (!webcamRef.current?.video || !canvasRef.current || !isModelLoaded) {
+    if (!webcamRef.current?.video || !canvasRef.current || !isModelLoaded || !faceapi) {
       rafId.current = requestAnimationFrame(processFrame);
       return;
     }
@@ -416,36 +416,39 @@ const WebcamCapture = ({
     const canvas = canvasRef.current;
     const now = performance.now();
 
-    // Ensure video is ready
-    if (video.readyState !== 4) {
+    // Ensure video is ready and playing
+    if (video.readyState !== 4 || video.paused || video.ended) {
       rafId.current = requestAnimationFrame(processFrame);
       return;
     }
 
-    // Check if we should process this frame
-    const timeSinceLastDetection = now - lastDetectionTime.current;
-    const shouldProcessFrame = !processingFrame.current && 
-      timeSinceLastDetection >= detectionFrequency &&
-      performanceSettings.current.skippedFrames <= performanceSettings.current.maxSkippedFrames;
+    try {
+      // Check if we should process this frame
+      const timeSinceLastDetection = now - lastDetectionTime.current;
+      const shouldProcessFrame = !processingFrame.current && 
+        timeSinceLastDetection >= detectionFrequency &&
+        performanceSettings.current.skippedFrames <= performanceSettings.current.maxSkippedFrames;
 
-    // Update canvas size if needed
-    const displaySize = { width: video.videoWidth, height: video.videoHeight };
-    if (canvas.width !== displaySize.width || canvas.height !== displaySize.height) {
-      canvas.width = displaySize.width;
-      canvas.height = displaySize.height;
-      faceapi.matchDimensions(canvas, displaySize);
-    }
+      // Update canvas size if needed
+      const displaySize = { width: video.videoWidth, height: video.videoHeight };
+      if (canvas.width !== displaySize.width || canvas.height !== displaySize.height) {
+        canvas.width = displaySize.width;
+        canvas.height = displaySize.height;
+        faceapi.matchDimensions(canvas, displaySize);
+      }
 
-    if (shouldProcessFrame) {
-      const processStart = performance.now();
-      processingFrame.current = true;
-      lastDetectionTime.current = now;
+      if (shouldProcessFrame) {
+        processingFrame.current = true;
+        lastDetectionTime.current = now;
 
-      try {
+        // Clear canvas before processing
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
         // Optimized detection options
         const detectionOptions = new faceapi.TinyFaceDetectorOptions({
-          inputSize: 160, // Back to original size
-          scoreThreshold: 0.3 // Back to original threshold
+          inputSize: 160,
+          scoreThreshold: 0.3
         });
 
         const detections = await faceapi
@@ -456,10 +459,6 @@ const WebcamCapture = ({
         if (detections) {
           // Apply smoothing to detections
           const smoothedDetections = smoothDetection(detections);
-
-          // Clear and draw
-          const ctx = canvas.getContext('2d');
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
 
           // Resize and draw
           const resizedDetections = faceapi.resizeResults(smoothedDetections, displaySize);
@@ -492,26 +491,53 @@ const WebcamCapture = ({
           performanceSettings.current.skippedFrames = 0;
         }
 
-        const processingTime = performance.now() - processStart;
+        const processingTime = performance.now() - now;
         if (processingTime > performanceSettings.current.minProcessingTime) {
           performanceSettings.current.skippedFrames++;
         }
-      } catch (error) {
-        console.error('Frame processing error:', error);
-        performanceSettings.current.skippedFrames++;
-      } finally {
-        processingFrame.current = false;
       }
+    } catch (error) {
+      console.error('Frame processing error:', error);
+      performanceSettings.current.skippedFrames++;
+    } finally {
+      processingFrame.current = false;
     }
 
-    rafId.current = requestAnimationFrame(processFrame);
-  }, [isModelLoaded, onEmotionDetected, detectionFrequency, showLandmarks, drawDetections]);
+    // Always request next frame, even if there was an error
+    if (isAutoDetecting && isModelLoaded) {
+      rafId.current = requestAnimationFrame(processFrame);
+    }
+  }, [isModelLoaded, onEmotionDetected, detectionFrequency, showLandmarks, drawDetections, isAutoDetecting, faceapi]);
 
   // Start/stop frame processing
   useEffect(() => {
     if (isAutoDetecting && isModelLoaded && webcamRef.current?.video) {
+      // Reset processing state
+      processingFrame.current = false;
+      lastDetectionTime.current = 0;
+      performanceSettings.current.skippedFrames = 0;
+      
       // Start processing frames
       processFrame();
+      
+      // Setup recovery interval
+      const recoveryInterval = setInterval(() => {
+        const now = performance.now();
+        const timeSinceLastDetection = now - lastDetectionTime.current;
+        
+        // If no detection for more than 5 seconds, try to recover
+        if (timeSinceLastDetection > 5000) {
+          console.log('Attempting to recover detection...');
+          processingFrame.current = false;
+          lastDetectionTime.current = 0;
+          performanceSettings.current.skippedFrames = 0;
+          if (rafId.current) {
+            cancelAnimationFrame(rafId.current);
+            rafId.current = null;
+          }
+          processFrame();
+        }
+      }, 5000);
       
       return () => {
         // Cleanup
@@ -519,6 +545,8 @@ const WebcamCapture = ({
           cancelAnimationFrame(rafId.current);
           rafId.current = null;
         }
+        clearInterval(recoveryInterval);
+        processingFrame.current = false;
       };
     }
   }, [isAutoDetecting, isModelLoaded, processFrame]);
