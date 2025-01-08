@@ -447,7 +447,7 @@ Keep your response supportive, understanding, and concise. [/INST]`;
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-6 w-96 h-[600px] shadow-2xl rounded-2xl overflow-hidden z-50"
+            className="fixed bottom-24 right-0 sm:right-6 w-full sm:w-96 h-[80vh] sm:h-[600px] shadow-2xl rounded-2xl overflow-hidden z-50 mx-auto sm:mx-0 max-w-[96vw] sm:max-w-none"
           >
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden h-full flex flex-col">
               {/* Header */}
@@ -572,7 +572,7 @@ Keep your response supportive, understanding, and concise. [/INST]`;
                     </button>
                     {showEmojis && (
                       <div className="absolute bottom-full right-0 mb-2 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-                        <div className="grid grid-cols-6 gap-1">
+                        <div className="grid grid-cols-4 sm:grid-cols-6 gap-1">
                           {['😊', '😢', '😠', '😮', '😐', '😨', '🤢', '👍', '❤️', '🎉', '🤔', '😴'].map((emoji) => (
                             <button
                               key={emoji}
@@ -593,9 +593,9 @@ Keep your response supportive, understanding, and concise. [/INST]`;
                   </div>
                   <button
                     type="submit"
-                    className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-600 transition-all duration-200 flex items-center space-x-2"
+                    className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-600 transition-all duration-200 flex items-center space-x-2 whitespace-nowrap"
                   >
-                    <span>Send</span>
+                    <span className="hidden sm:inline">Send</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>

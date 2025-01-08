@@ -54,7 +54,7 @@ function App() {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-400">
                 EmotiSense
@@ -64,9 +64,9 @@ function App() {
               </p>
             </div>
             {currentEmotion && (
-              <div className="hidden sm:block">
+              <div className="w-full sm:w-auto bg-indigo-50 dark:bg-indigo-900/50 rounded-lg px-4 py-2 text-center sm:text-left">
                 <span className="text-sm text-gray-500 dark:text-gray-400">Current Emotion:</span>
-                <span className="ml-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-sm font-medium">
+                <span className="ml-2 text-indigo-600 dark:text-indigo-400 text-sm font-medium">
                   {currentEmotion.emotion} ({(currentEmotion.confidence * 100).toFixed(0)}%)
                 </span>
               </div>
@@ -75,7 +75,7 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="space-y-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -117,18 +117,18 @@ function App() {
                 Emotion Analytics
               </h2>
             </div>
-            <div className="p-4">
+            <div className="p-4 overflow-x-auto">
               <EmotionAnalytics emotionHistory={emotionHistory} />
             </div>
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <EmotionJournal emotionHistory={emotionHistory} />
           <EmotionInsights emotionHistory={emotionHistory} />
         </div>
 
-        <div className="mt-6">
+        <div>
           <ChatInterface 
             currentEmotion={currentEmotion?.emotion} 
             emotionHistory={emotionHistory} 

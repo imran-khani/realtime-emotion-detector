@@ -185,7 +185,7 @@ const LandingPage = ({ onGetStarted }) => {
             </div>
 
             <div className="mt-8 text-sm text-gray-400">
-              Supervised by: <span className="text-indigo-400">Dr. Example Name</span>
+              Supervised by: <span className="text-indigo-400">Gulzar Alam</span>
             </div>
           </div>
         </motion.div>

@@ -206,12 +206,12 @@ const EmotionAnalytics = ({ emotionHistory }) => {
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
             Time Range
           </h3>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {['1m', '5m', '15m', '30m'].map(range => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-1 min-w-[60px] ${
                   timeRange === range 
                     ? 'bg-indigo-600 text-white' 
                     : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -227,15 +227,15 @@ const EmotionAnalytics = ({ emotionHistory }) => {
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
             Recent Transitions
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-[120px] overflow-y-auto">
             {emotionTransitions.map((transition, idx) => (
-              <div key={idx} className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+              <div key={idx} className="flex items-center text-sm text-gray-600 dark:text-gray-400 flex-wrap gap-2">
                 <span className="capitalize">{transition.from}</span>
-                <svg className="w-4 h-4 mx-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
                 <span className="capitalize">{transition.to}</span>
-                <span className="ml-2 text-gray-400 dark:text-gray-500">
+                <span className="text-gray-400 dark:text-gray-500 ml-auto">
                   {new Date(transition.timestamp).toLocaleTimeString([], { 
                     hour: '2-digit', 
                     minute: '2-digit' 
@@ -243,12 +243,36 @@ const EmotionAnalytics = ({ emotionHistory }) => {
                 </span>
               </div>
             ))}
+            {emotionTransitions.length === 0 && (
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                No transitions yet
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 h-[400px]">
-        <Line ref={chartRef} options={chartOptions} data={getChartData()} />
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+        <div className="w-full h-[400px] min-h-[300px]">
+          <Line ref={chartRef} options={{
+            ...chartOptions,
+            maintainAspectRatio: false,
+            responsive: true,
+            scales: {
+              ...chartOptions.scales,
+              x: {
+                ...chartOptions.scales.x,
+                ticks: {
+                  ...chartOptions.scales.x.ticks,
+                  maxRotation: 45,
+                  minRotation: 45,
+                  autoSkip: true,
+                  maxTicksLimit: window.innerWidth < 768 ? 6 : 12
+                }
+              }
+            }
+          }} data={getChartData()} />
+        </div>
       </div>
     </div>
   );
