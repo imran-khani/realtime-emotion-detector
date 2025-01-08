@@ -23,7 +23,6 @@ ChartJS.register(
 
 const EmotionAnalytics = ({ emotionHistory }) => {
   const [emotionData, setEmotionData] = useState([]);
-  const [timeRange, setTimeRange] = useState('1m');
   const [dominantEmotion, setDominantEmotion] = useState(null);
   const [emotionTransitions, setEmotionTransitions] = useState([]);
   const chartRef = useRef(null);
@@ -53,27 +52,8 @@ const EmotionAnalytics = ({ emotionHistory }) => {
     }
     setEmotionTransitions(transitions.slice(-3));
 
-    // Get data for selected time range
-    const now = Date.now();
-    const timeRangeMs = {
-      '1m': 60 * 1000,
-      '5m': 5 * 60 * 1000,
-      '15m': 15 * 60 * 1000,
-      '30m': 30 * 60 * 1000
-    }[timeRange];
-
-    const filteredData = emotionHistory.filter(entry => 
-      (now - entry.timestamp) <= timeRangeMs
-    );
-
-    // If no data in current range, reset time range
-    if (filteredData.length === 0) {
-      setTimeRange('1m');
-      return;
-    }
-
     // Prepare chart data
-    const chartData = filteredData.map(entry => ({
+    const chartData = emotionHistory.map(entry => ({
       timestamp: new Date(entry.timestamp).toLocaleTimeString([], { 
         hour: '2-digit', 
         minute: '2-digit',
@@ -83,7 +63,7 @@ const EmotionAnalytics = ({ emotionHistory }) => {
     }));
 
     setEmotionData(chartData);
-  }, [emotionHistory, timeRange]);
+  }, [emotionHistory]);
 
   const chartOptions = {
     responsive: true,
@@ -201,28 +181,7 @@ const EmotionAnalytics = ({ emotionHistory }) => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-            Time Range
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {['1m', '5m', '15m', '30m'].map(range => (
-              <button
-                key={range}
-                onClick={() => setTimeRange(range)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-1 min-w-[60px] ${
-                  timeRange === range 
-                    ? 'bg-indigo-600 text-white' 
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                {range}
-              </button>
-            ))}
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
         <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
             Recent Transitions

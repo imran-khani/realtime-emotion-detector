@@ -18,18 +18,6 @@ const EmotionJournal = ({ emotionHistory }) => {
     }
   }, [emotionHistory]);
 
-  // Auto-update every minute
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (emotionHistory && emotionHistory.length > 0) {
-        analyzeEmotions(emotionHistory);
-        setLastUpdate(new Date());
-      }
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [emotionHistory]);
-
   const getFilteredHistory = (history) => {
     const now = new Date();
     const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
