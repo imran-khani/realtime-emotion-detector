@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 const MODEL_NAME = "gpt-4o-mini";
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
@@ -63,16 +64,17 @@ const COPING_STRATEGIES = {
   ]
 };
 
-const FullscreenChat = ({ currentEmotion, emotionHistory, onClose }) => {
+const FullscreenChat = ({ currentMood, emotionHistory, onClose }) => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
+  const [showEmojis, setShowEmojis] = useState(false);
   
   // Initialize chat with a welcome message
   useEffect(() => {
-    const emotion = currentEmotion?.toLowerCase() || 'neutral';
+    const emotion = currentMood?.toLowerCase() || 'neutral';
     
     // Analyze emotion history on component mount
     const analysis = analyzeEmotionHistory();
@@ -231,7 +233,7 @@ const FullscreenChat = ({ currentEmotion, emotionHistory, onClose }) => {
     if (!inputMessage.trim()) return;
 
     // Add user message
-    addMessage(inputMessage, 'user', currentEmotion);
+    addMessage(inputMessage, 'user', currentMood);
     const userMsg = inputMessage;
     setInputMessage('');
 
@@ -243,7 +245,7 @@ const FullscreenChat = ({ currentEmotion, emotionHistory, onClose }) => {
       await new Promise(resolve => setTimeout(resolve, 700));
       
       // Get AI response
-      const response = await generateAIResponse(userMsg, currentEmotion);
+      const response = await generateAIResponse(userMsg, currentMood);
       
       // Hide typing indicator before adding the AI message
       setIsTyping(false);
@@ -252,7 +254,7 @@ const FullscreenChat = ({ currentEmotion, emotionHistory, onClose }) => {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       // Add AI response
-      addMessage(response, 'ai', currentEmotion);
+      addMessage(response, 'ai', currentMood);
     } catch (error) {
       console.error('Error getting AI response:', error);
       // Hide typing indicator
@@ -262,7 +264,7 @@ const FullscreenChat = ({ currentEmotion, emotionHistory, onClose }) => {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       // Fallback response
-      addMessage("I'm here to support you. Let's talk about how you're feeling or try an activity that might help.", 'ai', currentEmotion);
+      addMessage("I'm here to support you. Let's talk about how you're feeling or try an activity that might help.", 'ai', currentMood);
     }
   };
 
@@ -289,117 +291,160 @@ const FullscreenChat = ({ currentEmotion, emotionHistory, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-gray-100 dark:bg-gray-900 z-50 flex flex-col">
-      {/* Header */}
-      <div className="p-4 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white flex items-center justify-between shadow-md">
-        <div className="flex items-center space-x-3">
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="text-xl font-semibold">EmotiChat Assistant</h1>
-        </div>
-        {currentEmotion && (
+      <div className="h-full flex flex-col">
+        {/* Header */}
+        <div className="bg-indigo-600 dark:bg-indigo-700 text-white p-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="font-medium capitalize">{currentEmotion}</span>
+            <span className="text-lg font-semibold">EmotiChat</span>
+            {currentMood && (
+              <span className="text-xs bg-indigo-500/40 px-2 py-0.5 rounded-full">
+                {currentMood.charAt(0).toUpperCase() + currentMood.slice(1)}
+              </span>
+            )}
           </div>
-        )}
-      </div>
-      
-      {/* Main chat area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-4xl mx-auto w-full">
-        <AnimatePresence>
-          {messages.map((message) => (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} items-end space-x-2`}
-            >
-              {message.sender === 'ai' && (
-                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-                  <span className="text-indigo-600 dark:text-indigo-400 text-sm">AI</span>
-                </div>
-              )}
-              <div className="flex flex-col space-y-1 max-w-[80%]">
-                <div
-                  className={`rounded-2xl p-4 ${
-                    message.sender === 'user'
-                      ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-br-none'
-                      : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'
-                  }`}
-                >
-                  <p className="text-sm md:text-base whitespace-pre-wrap">{message.text}</p>
-                </div>
-                <span className="text-xs text-gray-400 dark:text-gray-500 px-2">
-                  {formatTime(message.timestamp)}
-                </span>
-              </div>
-              {message.sender === 'user' && (
-                <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center">
-                  <span className="text-white text-sm">You</span>
-                </div>
-              )}
-            </motion.div>
-          ))}
-          {isTyping && (
-            <motion.div
-              key="typing-indicator"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="flex justify-start items-end space-x-2"
-            >
-              <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-                <span className="text-indigo-600 dark:text-indigo-400 text-sm">AI</span>
-              </div>
-              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-bl-none p-4">
-                <div className="flex space-x-2">
-                  <motion.div
-                    animate={{ y: [0, -5, 0] }}
-                    transition={{ repeat: Infinity, duration: 1.2 }}
-                    className="w-3 h-3 bg-gray-400 dark:bg-gray-500 rounded-full"
-                  />
-                  <motion.div
-                    animate={{ y: [0, -5, 0] }}
-                    transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }}
-                    className="w-3 h-3 bg-gray-400 dark:bg-gray-500 rounded-full"
-                  />
-                  <motion.div
-                    animate={{ y: [0, -5, 0] }}
-                    transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }}
-                    className="w-3 h-3 bg-gray-400 dark:bg-gray-500 rounded-full"
-                  />
-                </div>
-              </div>
-            </motion.div>
-          )}
-          <div ref={chatEndRef} />
-        </AnimatePresence>
-      </div>
-      
-      {/* Message input */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <form onSubmit={handleSendMessage} className="flex space-x-2 max-w-4xl mx-auto">
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 p-4 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
-          />
-          <button
-            type="submit"
-            className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-600 transition-all duration-200 flex items-center justify-center"
+          <button 
+            onClick={onClose} 
+            className="p-1 rounded-full hover:bg-indigo-500/30"
           >
-            <span className="mr-2">Send</span>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
+            <XMarkIcon className="w-5 h-5" />
           </button>
-        </form>
+        </div>
+
+        {/* Chat area */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50 dark:bg-gray-900">
+          <AnimatePresence>
+            {messages.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center text-gray-500 dark:text-gray-400 mt-6 space-y-1.5"
+              >
+                <p className="text-base">👋 Welcome to the fullscreen chat</p>
+                <p className="text-xs">I can suggest activities based on your emotional state</p>
+              </motion.div>
+            ) : (
+              messages.map((message) => (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} items-end space-x-2`}
+                >
+                  {message.sender === 'ai' && (
+                    <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+                      <span className="text-indigo-600 dark:text-indigo-400 text-xs">AI</span>
+                    </div>
+                  )}
+                  <div className="flex flex-col space-y-1 max-w-[85%]">
+                    <div
+                      className={`rounded-2xl p-2.5 ${
+                        message.sender === 'user'
+                          ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-br-none'
+                          : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'
+                      }`}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                    </div>
+                    <span className="text-xs text-gray-400 dark:text-gray-500 px-1">
+                      {formatTime(message.timestamp)}
+                    </span>
+                  </div>
+                  {message.sender === 'user' && (
+                    <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center">
+                      <span className="text-white text-xs">You</span>
+                    </div>
+                  )}
+                </motion.div>
+              ))
+            )}
+            {isTyping && (
+              <motion.div
+                key="typing-indicator"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex justify-start items-end space-x-2"
+              >
+                <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+                  <span className="text-indigo-600 dark:text-indigo-400 text-xs">AI</span>
+                </div>
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-bl-none p-2.5">
+                  <div className="flex space-x-1.5">
+                    <motion.div
+                      animate={{ y: [0, -3, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.2 }}
+                      className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full"
+                    />
+                    <motion.div
+                      animate={{ y: [0, -3, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }}
+                      className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full"
+                    />
+                    <motion.div
+                      animate={{ y: [0, -3, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }}
+                      className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full"
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            <div ref={chatEndRef} />
+          </AnimatePresence>
+        </div>
+
+        {/* Input area */}
+        <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <form onSubmit={handleSendMessage} className="flex space-x-2">
+            <div className="flex-1 relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your message..."
+                className="w-full p-2.5 pr-10 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              />
+              <button
+                type="button"
+                onClick={() => setShowEmojis(!showEmojis)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                😊
+              </button>
+              {showEmojis && (
+                <div className="absolute bottom-full right-0 mb-2 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+                  <div className="grid grid-cols-4 gap-1">
+                    {['😊', '😢', '😠', '😮', '😐', '😨', '🤢', '👍'].map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => {
+                          setInputMessage(prev => prev + emoji);
+                          setShowEmojis(false);
+                          inputRef.current?.focus();
+                        }}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <button
+              type="submit"
+              className="px-3 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-600 transition-all duration-200 flex items-center"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

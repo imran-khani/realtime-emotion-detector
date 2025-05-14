@@ -499,22 +499,22 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-0 sm:right-6 w-full sm:w-96 h-[80vh] sm:h-[600px] shadow-2xl rounded-2xl overflow-hidden z-50 mx-auto sm:mx-0 max-w-[96vw] sm:max-w-none"
+            className="fixed bottom-24 right-6 w-full sm:w-96 h-[80vh] sm:h-[550px] shadow-2xl rounded-2xl overflow-hidden z-50 max-w-[calc(100vw-2rem)] sm:max-w-none"
           >
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden h-full flex flex-col">
               {/* Header */}
-              <div className="p-4 bg-gradient-to-r from-indigo-600 to-indigo-500 flex items-center justify-between">
+              <div className="p-3 bg-gradient-to-r from-indigo-600 to-indigo-500 flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
                   <div>
-                    <h2 className="text-white text-lg font-semibold">EmotiChat Assistant</h2>
-                    <p className="text-indigo-100 text-sm">Always here to listen and support</p>
+                    <h2 className="text-white text-lg font-semibold">EmotiChat</h2>
+                    <p className="text-indigo-100 text-xs">AI assistant</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   {currentEmotion && (
-                    <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs">
-                      Feeling: {currentEmotion}
+                    <span className="px-2 py-1 rounded-full bg-white/10 text-white text-xs">
+                      {currentEmotion}
                     </span>
                   )}
                   <button 
@@ -529,21 +529,29 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
                     </svg>
                   </button>
+                  <button 
+                    onClick={() => setIsChatOpen(false)}
+                    className="p-1.5 hover:bg-white/10 rounded-full text-white"
+                    title="Close chat"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               </div>
 
               {/* Chat messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900/50">
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50 dark:bg-gray-900/50">
                 <AnimatePresence>
                   {messages.length === 0 ? (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-center text-gray-500 dark:text-gray-400 mt-8 space-y-2"
+                      className="text-center text-gray-500 dark:text-gray-400 mt-6 space-y-1.5"
                     >
-                      <p className="text-lg">👋 Welcome to EmotiChat!</p>
-                      <p className="text-sm">I can see your emotions and I'm here to chat and support you.</p>
-                      <p className="text-xs">Try saying "Hi" or "How can you help me?"</p>
+                      <p className="text-base">👋 Welcome to EmotiChat</p>
+                      <p className="text-xs">I can sense your emotions and help you process them</p>
                     </motion.div>
                   ) : (
                     messages.map((message) => (
@@ -555,13 +563,13 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
                         className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} items-end space-x-2`}
                       >
                         {message.sender === 'ai' && (
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-                            <span className="text-indigo-600 dark:text-indigo-400 text-sm">AI</span>
+                          <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+                            <span className="text-indigo-600 dark:text-indigo-400 text-xs">AI</span>
                           </div>
                         )}
-                        <div className="flex flex-col space-y-1 max-w-[80%]">
+                        <div className="flex flex-col space-y-1 max-w-[85%]">
                           <div
-                            className={`rounded-2xl p-3 ${
+                            className={`rounded-2xl p-2.5 ${
                               message.sender === 'user'
                                 ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-br-none'
                                 : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'
@@ -569,13 +577,13 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
                           >
                             <p className="text-sm whitespace-pre-wrap">{message.text}</p>
                           </div>
-                          <span className="text-xs text-gray-400 dark:text-gray-500 px-2">
+                          <span className="text-xs text-gray-400 dark:text-gray-500 px-1">
                             {formatTime(message.timestamp)}
                           </span>
                         </div>
                         {message.sender === 'user' && (
-                          <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
-                            <span className="text-white text-sm">You</span>
+                          <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center">
+                            <span className="text-white text-xs">You</span>
                           </div>
                         )}
                       </motion.div>
@@ -589,36 +597,36 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
                       exit={{ opacity: 0, scale: 0.95 }}
                       className="flex justify-start items-end space-x-2"
                     >
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-                        <span className="text-indigo-600 dark:text-indigo-400 text-sm">AI</span>
+                      <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+                        <span className="text-indigo-600 dark:text-indigo-400 text-xs">AI</span>
                       </div>
-                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-bl-none p-3">
-                        <div className="flex space-x-2">
+                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-bl-none p-2.5">
+                        <div className="flex space-x-1.5">
                           <motion.div
                             animate={{ y: [0, -3, 0] }}
                             transition={{ repeat: Infinity, duration: 1.2 }}
-                            className="w-3 h-3 bg-gray-400 dark:bg-gray-500 rounded-full"
+                            className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full"
                           />
                           <motion.div
                             animate={{ y: [0, -3, 0] }}
                             transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }}
-                            className="w-3 h-3 bg-gray-400 dark:bg-gray-500 rounded-full"
+                            className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full"
                           />
                           <motion.div
                             animate={{ y: [0, -3, 0] }}
                             transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }}
-                            className="w-3 h-3 bg-gray-400 dark:bg-gray-500 rounded-full"
+                            className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full"
                           />
                         </div>
                       </div>
                     </motion.div>
                   )}
+                  <div ref={chatEndRef} />
                 </AnimatePresence>
-                <div ref={chatEndRef} />
               </div>
 
               {/* Message input */}
-              <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+              <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                 <form onSubmit={handleSendMessage} className="flex space-x-2">
                   <div className="flex-1 relative">
                     <input
@@ -628,19 +636,19 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="Type your message..."
-                      className="w-full p-3 pr-12 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      className="w-full p-2.5 pr-10 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
                     <button
                       type="button"
                       onClick={() => setShowEmojis(!showEmojis)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     >
                       😊
                     </button>
                     {showEmojis && (
                       <div className="absolute bottom-full right-0 mb-2 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-                        <div className="grid grid-cols-4 sm:grid-cols-6 gap-1">
-                          {['😊', '😢', '😠', '😮', '😐', '😨', '🤢', '👍', '❤️', '🎉', '🤔', '😴'].map((emoji) => (
+                        <div className="grid grid-cols-4 gap-1">
+                          {['😊', '😢', '😠', '😮', '😐', '😨', '🤢', '👍'].map((emoji) => (
                             <button
                               key={emoji}
                               type="button"
@@ -660,9 +668,8 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
                   </div>
                   <button
                     type="submit"
-                    className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-600 transition-all duration-200 flex items-center space-x-2 whitespace-nowrap"
+                    className="px-3 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-600 transition-all duration-200 flex items-center"
                   >
-                    <span className="hidden sm:inline">Send</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
