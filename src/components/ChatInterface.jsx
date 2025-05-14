@@ -176,8 +176,9 @@ const getDefaultEmotion = (emotion) => {
   return validEmotions.includes(emotion?.toLowerCase()) ? emotion.toLowerCase() : 'neutral';
 };
 
-const HF_TOKEN = "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";
-const MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2";
+const MODEL_NAME = "gpt-4o-mini";
+// Access environment variables in Vite
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
 
 const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
   const [messages, setMessages] = useState([]);
@@ -195,38 +196,47 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
 
   const generateAIResponse = async (userMessage, emotion) => {
     try {
-      // Format prompt in Mistral style
-      const prompt = `<s>[INST] You are EmotiChat, an empathetic AI assistant. The user is feeling ${emotion}.
-Please respond to their message: "${userMessage}"
-Keep your response supportive, understanding, and concise. [/INST]`;
+      // Create a more detailed emotion context from history
+      const emotionContext = analyzeEmotionHistory();
+      const emotionDesc = emotionContext ? 
+        `Your emotion has been ${emotion} for ${Math.floor(emotionContext.duration/60000)} minutes. Your dominant emotion has been ${emotionContext.dominantEmotion}.` : 
+        `Your current emotion is ${emotion}.`;
+      
+      // Create a better prompt with emotion history context
+      const messages = [
+        {
+          role: 'system',
+          content: `You are EmotiChat, an empathetic AI assistant specialized in emotional intelligence. 
+          You help users understand and process their emotions in a supportive way. 
+          Always be concise, helpful, and considerate of the user's emotional state.
+          The user's current emotion based on facial recognition is: ${emotion}.
+          ${emotionContext ? `Emotion history context: ${JSON.stringify(emotionContext)}` : ''}`
+        },
+        {
+          role: 'user',
+          content: userMessage
+        }
+      ];
       
       const response = await axios.post(
-        `https://api-inference.huggingface.co/models/${MODEL_NAME}`,
+        'https://api.openai.com/v1/chat/completions',
         {
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 150,
-            temperature: 0.7,
-            top_k: 50,
-            top_p: 0.9,
-            repetition_penalty: 1.1,
-            do_sample: true
-          }
+          model: MODEL_NAME,
+          messages: messages,
+          temperature: 0.7,
+          max_tokens: 150,
+          top_p: 0.9
         },
         {
           headers: {
-            'Authorization': `Bearer ${HF_TOKEN}`,
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
             'Content-Type': 'application/json'
           }
         }
       );
 
-      let aiResponse = response.data[0]?.generated_text || '';
-      
-      // Clean up the response
-      aiResponse = aiResponse.split('[/INST]').pop().trim();
-      aiResponse = aiResponse.split('[INST]')[0].trim();
-      
+      // Extract the response content
+      const aiResponse = response.data.choices[0]?.message?.content || '';
       return aiResponse || getSmartResponse(userMessage, emotion);
     } catch (error) {
       console.error('AI response error:', error);
@@ -312,18 +322,24 @@ Keep your response supportive, understanding, and concise. [/INST]`;
   const analyzeEmotionHistory = () => {
     if (!emotionHistory || emotionHistory.length === 0) return null;
 
+    // Analyze the last 10 minutes
     const last10Minutes = emotionHistory.filter(entry => 
       Date.now() - entry.timestamp < 10 * 60 * 1000
     );
 
+    if (last10Minutes.length === 0) return null;
+
+    // Count occurrences of each emotion
     const emotionCounts = last10Minutes.reduce((acc, entry) => {
       acc[entry.emotion] = (acc[entry.emotion] || 0) + 1;
       return acc;
     }, {});
 
+    // Find the dominant emotion
     const dominantEmotion = Object.entries(emotionCounts)
       .reduce((a, b) => (b[1] > a[1] ? b : a))[0];
 
+    // Track emotion changes
     const emotionChanges = last10Minutes.reduce((changes, entry, i, arr) => {
       if (i > 0 && entry.emotion !== arr[i - 1].emotion) {
         changes.push({
@@ -335,11 +351,21 @@ Keep your response supportive, understanding, and concise. [/INST]`;
       return changes;
     }, []);
 
+    // Calculate emotional stability
+    const emotionalStability = emotionChanges.length <= 3 ? 'stable' : 'fluctuating';
+
+    // Calculate intensity by averaging confidence scores
+    const intensityScore = last10Minutes.reduce((sum, entry) => sum + entry.confidence, 0) / last10Minutes.length;
+    const emotionIntensity = intensityScore > 0.7 ? 'high' : intensityScore > 0.4 ? 'medium' : 'low';
+
     return {
       dominantEmotion,
       emotionChanges,
-      duration: last10Minutes.length > 0 ? 
-        Date.now() - last10Minutes[0].timestamp : 0
+      duration: Date.now() - last10Minutes[0].timestamp,
+      emotionCounts,
+      emotionalStability,
+      emotionIntensity,
+      recentEmotions: last10Minutes.slice(-5).map(e => e.emotion)
     };
   };
 

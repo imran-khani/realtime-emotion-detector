@@ -46,7 +46,7 @@ const WebcamCapture = ({
   const smoothedValues = useRef({
     position: { x: 0, y: 0 },
     age: 0,
-    alpha: 0.8 // Smoothing factor (0-1), higher = more smoothing
+    alpha: 0.8 
   });
 
   const smoothValue = (newValue, oldValue, alpha = performanceSettings.current.smoothingFactor) => {
