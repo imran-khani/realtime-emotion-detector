@@ -261,16 +261,31 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
     setIsTyping(true);
 
     try {
+      // Simulate a slight delay for better UX even if response is fast
+      await new Promise(resolve => setTimeout(resolve, 700));
+      
       // Get AI response
       const response = await generateAIResponse(userMsg, currentEmotion);
+      
+      // Hide typing indicator before adding the AI message
+      setIsTyping(false);
+      
+      // Short delay before showing the AI response
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Add AI response
       addMessage(response, 'ai', currentEmotion);
     } catch (error) {
       console.error('Error getting AI response:', error);
-      // Fallback to rule-based response
+      // Hide typing indicator
+      setIsTyping(false);
+      
+      // Wait a moment before showing fallback
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Fallback response
       const fallbackResponse = getSmartResponse(userMsg, currentEmotion);
       addMessage(fallbackResponse, 'ai', currentEmotion);
-    } finally {
-      setIsTyping(false);
     }
   };
 
@@ -568,6 +583,7 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
                   )}
                   {isTyping && (
                     <motion.div
+                      key="typing-indicator"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}

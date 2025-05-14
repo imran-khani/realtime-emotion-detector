@@ -239,15 +239,30 @@ const FullscreenChat = ({ currentEmotion, emotionHistory, onClose }) => {
     setIsTyping(true);
 
     try {
+      // Simulate a slight delay for better UX even if response is fast
+      await new Promise(resolve => setTimeout(resolve, 700));
+      
       // Get AI response
       const response = await generateAIResponse(userMsg, currentEmotion);
+      
+      // Hide typing indicator before adding the AI message
+      setIsTyping(false);
+      
+      // Short delay before showing the AI response
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Add AI response
       addMessage(response, 'ai', currentEmotion);
     } catch (error) {
       console.error('Error getting AI response:', error);
+      // Hide typing indicator
+      setIsTyping(false);
+      
+      // Wait a moment before showing fallback
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       // Fallback response
       addMessage("I'm here to support you. Let's talk about how you're feeling or try an activity that might help.", 'ai', currentEmotion);
-    } finally {
-      setIsTyping(false);
     }
   };
 
@@ -330,8 +345,10 @@ const FullscreenChat = ({ currentEmotion, emotionHistory, onClose }) => {
           ))}
           {isTyping && (
             <motion.div
+              key="typing-indicator"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               className="flex justify-start items-end space-x-2"
             >
               <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
