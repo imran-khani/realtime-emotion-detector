@@ -3,8 +3,9 @@ import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
-import Profile from './pages/Profile';
 import About from './pages/About';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import LandingPage from './components/LandingPage';
 import { useState } from 'react';
 
@@ -29,8 +30,9 @@ function App() {
             <Route path="/" element={<Layout />}>
               <Route index element={<Home />} />
               <Route path="dashboard" element={<Dashboard />} />
-              <Route path="profile" element={<Profile />} />
               <Route path="about" element={<About />} />
+              <Route path="privacy" element={<PrivacyPolicy />} />
+              <Route path="terms" element={<TermsOfService />} />
             </Route>
           </Routes>
         </Router>

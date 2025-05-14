@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Typography, Divider, List, ListItem, ListItemText, Chip, Box } from '@mui/material';
+import { Card, Typography, Divider, List, ListItem, ListItemText, Chip } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TimelineIcon from '@mui/icons-material/Timeline';
@@ -197,16 +197,16 @@ const EmotionJournal = ({ emotionHistory }) => {
                   }
                   secondary={
                     insight.type === 'stability' && (
-                      <Box className="flex items-center gap-2 mt-1">
+                      <span className="flex items-center gap-2 mt-1">
                         {insight.score >= 7 ? (
                           <TrendingUpIcon className="text-green-500" sx={{ fontSize: 16 }} />
                         ) : (
                           <TrendingDownIcon className="text-red-500" sx={{ fontSize: 16 }} />
                         )}
-                        <Typography variant="caption" className="text-gray-400 dark:text-gray-500">
+                        <Typography variant="caption" component="span" className="text-gray-400 dark:text-gray-500">
                           {insight.score >= 7 ? 'High stability' : 'Variable emotions'}
                         </Typography>
-                      </Box>
+                      </span>
                     )
                   }
                 />

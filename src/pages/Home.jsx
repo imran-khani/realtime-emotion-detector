@@ -10,7 +10,6 @@ import EmotionalFeedback from '../components/EmotionalFeedback';
 import EmotionInsights from '../components/EmotionInsights';
 import { 
   ChartBarIcon, 
-  UserCircleIcon,
   ArrowRightIcon,
   SparklesIcon 
 } from '@heroicons/react/24/outline';
@@ -73,13 +72,6 @@ const Home = () => {
               >
                 <ChartBarIcon className="w-4 h-4 mr-1.5" />
                 Dashboard
-              </Link>
-              <Link
-                to="/profile"
-                className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              >
-                <UserCircleIcon className="w-4 h-4 mr-1.5" />
-                Profile
               </Link>
             </div>
           </div>

@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   HomeIcon,
   ChartBarIcon,
-  UserIcon,
   InformationCircleIcon,
   Bars3Icon,
   XMarkIcon,
@@ -19,7 +18,6 @@ const Navigation = () => {
   const navItems = [
     { path: '/', label: 'Home', icon: HomeIcon },
     { path: '/dashboard', label: 'Dashboard', icon: ChartBarIcon },
-    { path: '/profile', label: 'Profile', icon: UserIcon },
     { path: '/about', label: 'About', icon: InformationCircleIcon },
   ];
 
