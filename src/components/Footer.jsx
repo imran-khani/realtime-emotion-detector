@@ -9,13 +9,13 @@ const Footer = () => {
 
   const footerLinks = {
     product: [
-      { label: 'Home', href: '/' },
-      { label: 'Dashboard', href: '/dashboard' },
-      { label: 'About', href: '/about' },
+      { label: 'Home', href: '/app' },
+      { label: 'Dashboard', href: '/app/dashboard' },
+      { label: 'About', href: '/app/about' },
     ],
     legal: [
-      { label: 'Privacy Policy', href: '/privacy' },
-      { label: 'Terms of Service', href: '/terms' },
+      { label: 'Privacy Policy', href: '/app/privacy' },
+      { label: 'Terms of Service', href: '/app/terms' },
     ],
   };
 
@@ -25,7 +25,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand Section */}
           <div className="md:col-span-1">
-            <Link to="/" className="flex items-center space-x-2 mb-4">
+            <Link to="/app" className="flex items-center space-x-2 mb-4">
               <FaceSmileIcon className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
               <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-400">
                 EmotiSense

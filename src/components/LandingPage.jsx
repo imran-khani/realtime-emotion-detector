@@ -1,12 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@mui/material';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import ChatIcon from '@mui/icons-material/Chat';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 
-const LandingPage = ({ onGetStarted }) => {
+const LandingPage = () => {
+  const navigate = useNavigate();
+  
+  const handleGetStarted = () => {
+    navigate('/app');
+  };
   const features = [
     {
       icon: <SentimentSatisfiedAltIcon sx={{ fontSize: 40 }} />,
@@ -56,7 +62,7 @@ const LandingPage = ({ onGetStarted }) => {
             <Button
               variant="contained"
               size="large"
-              onClick={onGetStarted}
+              onClick={handleGetStarted}
               sx={{
                 backgroundColor: 'rgb(79, 70, 229)',
                 '&:hover': {
@@ -135,7 +141,7 @@ const LandingPage = ({ onGetStarted }) => {
             <Button
               variant="contained"
               size="large"
-              onClick={onGetStarted}
+              onClick={handleGetStarted}
               sx={{
                 backgroundColor: 'rgb(79, 70, 229)',
                 '&:hover': {

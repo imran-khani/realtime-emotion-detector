@@ -16,9 +16,9 @@ const Navigation = () => {
   const location = useLocation();
 
   const navItems = [
-    { path: '/', label: 'Home', icon: HomeIcon },
-    { path: '/dashboard', label: 'Dashboard', icon: ChartBarIcon },
-    { path: '/about', label: 'About', icon: InformationCircleIcon },
+    { path: '/app', label: 'Home', icon: HomeIcon },
+    { path: '/app/dashboard', label: 'Dashboard', icon: ChartBarIcon },
+    { path: '/app/about', label: 'About', icon: InformationCircleIcon },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -29,7 +29,7 @@ const Navigation = () => {
         <div className="flex justify-between h-16">
           {/* Logo and brand */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link to="/app" className="flex items-center space-x-2">
               <FaceSmileIcon className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
               <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-400">
                 EmotiSense

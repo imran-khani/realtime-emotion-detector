@@ -67,7 +67,7 @@ const Home = () => {
             )}
             <div className="flex space-x-3">
               <Link
-                to="/dashboard"
+                to="/app/dashboard"
                 className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 <ChartBarIcon className="w-4 h-4 mr-1.5" />
@@ -167,7 +167,7 @@ const Home = () => {
             View detailed analytics and insights about your emotional patterns over time.
           </p>
           <Link
-            to="/dashboard"
+            to="/app/dashboard"
             className="inline-flex items-center px-6 py-3 bg-white text-indigo-600 font-semibold rounded-lg shadow hover:bg-gray-100 transition-colors"
           >
             Go to Dashboard
