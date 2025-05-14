@@ -42,12 +42,44 @@ const Dashboard = () => {
   const [emotionHistory, setEmotionHistory] = useState([]);
   const [timeRange, setTimeRange] = useState('week'); // week, month, year
   const [selectedEmotion, setSelectedEmotion] = useState(null);
+  const [refreshInterval, setRefreshInterval] = useState(null);
 
-  useEffect(() => {
+  // Function to load emotion history from localStorage
+  const loadEmotionHistory = () => {
     const saved = localStorage.getItem('emotionHistory');
     if (saved) {
-      setEmotionHistory(JSON.parse(saved));
+      const parsedData = JSON.parse(saved);
+      console.log('Dashboard: Loaded emotions:', parsedData.length);
+      setEmotionHistory(parsedData);
+    } else {
+      console.log('Dashboard: No emotions in localStorage');
     }
+  };
+
+  // Initial load and setup auto-refresh
+  useEffect(() => {
+    loadEmotionHistory();
+    
+    // Refresh data every 5 seconds
+    const interval = setInterval(() => {
+      loadEmotionHistory();
+    }, 5000);
+    
+    setRefreshInterval(interval);
+    
+    // Listen for storage changes from other tabs
+    const handleStorageChange = (e) => {
+      if (e.key === 'emotionHistory') {
+        loadEmotionHistory();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   // Calculate statistics
@@ -73,17 +105,19 @@ const Dashboard = () => {
 
     const filteredHistory = emotionHistory.filter(entry => entry.timestamp >= cutoffTime);
     
+    const totalCount = emotionHistory.length; // Total ever recorded
+    const filteredCount = filteredHistory.length; // Filtered by time range
+    
     const emotionCounts = filteredHistory.reduce((acc, entry) => {
       acc[entry.emotion] = (acc[entry.emotion] || 0) + 1;
       return acc;
     }, {});
 
-    const totalCount = filteredHistory.length;
     const dominantEmotion = Object.entries(emotionCounts)
       .sort((a, b) => b[1] - a[1])[0]?.[0];
 
-    const averageConfidence = filteredHistory.reduce((sum, entry) => 
-      sum + entry.confidence, 0) / totalCount;
+    const averageConfidence = filteredCount > 0 ? 
+      filteredHistory.reduce((sum, entry) => sum + entry.confidence, 0) / filteredCount : 0;
 
     // Calculate emotion trends
     const trends = calculateTrends(filteredHistory, timeRange);
@@ -91,6 +125,7 @@ const Dashboard = () => {
     return {
       emotionCounts,
       totalCount,
+      filteredCount,
       dominantEmotion,
       averageConfidence,
       trends,
@@ -102,26 +137,53 @@ const Dashboard = () => {
     const trends = {};
     const now = new Date();
     
-    history.forEach(entry => {
+    // Sort history by timestamp
+    const sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
+    
+    sortedHistory.forEach(entry => {
       const date = new Date(entry.timestamp);
       let key;
       
       if (range === 'week') {
-        key = `${date.getMonth()}/${date.getDate()} ${date.getHours()}:00`;
+        // Show hourly data for the past week
+        const hours = Math.floor((now - date) / (1000 * 60 * 60));
+        if (hours < 168) { // 7 days * 24 hours
+          key = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:00`;
+        }
       } else if (range === 'month') {
+        // Show daily data for the past month
         key = `${date.getMonth() + 1}/${date.getDate()}`;
       } else {
-        key = `${date.getMonth() + 1}/${date.getFullYear()}`;
+        // Show monthly data for the past year
+        key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
       }
       
-      if (!trends[key]) {
-        trends[key] = {};
+      if (key) {
+        if (!trends[key]) {
+          trends[key] = {};
+        }
+        trends[key][entry.emotion] = (trends[key][entry.emotion] || 0) + 1;
       }
-      
-      trends[key][entry.emotion] = (trends[key][entry.emotion] || 0) + 1;
     });
     
-    return trends;
+    // Ensure we have continuous data points
+    let filledTrends = {};
+    const trendKeys = Object.keys(trends).sort();
+    
+    if (range === 'week' && trendKeys.length > 0) {
+      // Fill in missing hours
+      const startDate = new Date(sortedHistory[0].timestamp);
+      const endDate = new Date();
+      
+      for (let d = new Date(startDate); d <= endDate; d.setHours(d.getHours() + 1)) {
+        const key = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:00`;
+        filledTrends[key] = trends[key] || {};
+      }
+    } else {
+      filledTrends = trends;
+    }
+    
+    return filledTrends;
   };
 
   const stats = getEmotionStats();
@@ -138,10 +200,10 @@ const Dashboard = () => {
   };
 
   const lineChartData = {
-    labels: stats ? Object.keys(stats.trends) : [],
+    labels: stats ? Object.keys(stats.trends).slice(-24) : [],  // Show last 24 data points
     datasets: stats ? Object.keys(emotionColors).map(emotion => ({
       label: emotion.charAt(0).toUpperCase() + emotion.slice(1),
-      data: Object.entries(stats.trends).map(([time, emotions]) => emotions[emotion] || 0),
+      data: Object.entries(stats.trends).slice(-24).map(([time, emotions]) => emotions[emotion] || 0),
       borderColor: emotionColors[emotion],
       backgroundColor: emotionColors[emotion] + '20',
       tension: 0.3,
@@ -162,25 +224,54 @@ const Dashboard = () => {
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: {
+      duration: 500
+    },
     plugins: {
       legend: {
         position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 10
+        }
       },
       tooltip: {
         mode: 'index',
         intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        callbacks: {
+          title: (context) => {
+            return context[0].label;
+          },
+          label: (context) => {
+            const label = context.dataset.label || '';
+            const value = context.parsed.y;
+            return `${label}: ${value} times`;
+          }
+        }
       }
     },
     scales: {
       x: {
         grid: {
           display: false
+        },
+        ticks: {
+          maxRotation: 45,
+          minRotation: 45,
+          autoSkip: true,
+          maxTicksLimit: 10
         }
       },
       y: {
         beginAtZero: true,
         grid: {
           color: 'rgba(0, 0, 0, 0.05)'
+        },
+        ticks: {
+          precision: 0
         }
       }
     }
@@ -192,25 +283,27 @@ const Dashboard = () => {
       value: stats?.totalCount || 0,
       icon: FaceSmileIcon,
       color: 'indigo',
-      trend: '+12%'
+      description: stats?.filteredCount ? `${stats.filteredCount} in selected period` : 'All time'
     },
     {
       title: 'Dominant Emotion',
       value: stats?.dominantEmotion || 'None',
       icon: FireIcon,
-      color: emotionColors[stats?.dominantEmotion] || 'gray',
-      description: `${((stats?.emotionCounts[stats?.dominantEmotion] / stats?.totalCount) * 100).toFixed(0)}% of the time`
+      color: stats?.dominantEmotion ? emotionColors[stats.dominantEmotion] : 'gray',
+      description: stats?.dominantEmotion && stats?.filteredCount > 0 ? 
+        `${((stats.emotionCounts[stats.dominantEmotion] / stats.filteredCount) * 100).toFixed(0)}% of the time` : 
+        'No data'
     },
     {
       title: 'Confidence Average',
-      value: stats ? `${(stats.averageConfidence * 100).toFixed(0)}%` : 'N/A',
+      value: stats && stats.averageConfidence ? `${(stats.averageConfidence * 100).toFixed(0)}%` : '0%',
       icon: ArrowTrendingUpIcon,
       color: 'green',
-      trend: '+5%'
+      trend: stats && stats.averageConfidence > 0.7 ? 'High' : 'Normal'
     },
     {
       title: 'Emotional Stability',
-      value: stats ? calculateStability(stats.filteredHistory) : 'N/A',
+      value: stats && stats.filteredHistory.length > 0 ? calculateStability(stats.filteredHistory) : 'No Data',
       icon: HeartIcon,
       color: 'purple',
       description: 'Based on variation'
@@ -243,13 +336,20 @@ const Dashboard = () => {
           transition={{ duration: 0.6 }}
         >
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Emotion Dashboard
-            </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Track and analyze your emotional patterns over time
-            </p>
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                Emotion Dashboard
+              </h1>
+              <p className="mt-2 text-gray-600 dark:text-gray-400">
+                Track and analyze your emotional patterns over time
+              </p>
+            </div>
+            <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+              <ClockIcon className="h-4 w-4" />
+              <span>Live updates</span>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            </div>
           </div>
 
           {/* Time Range Selector */}
@@ -351,35 +451,46 @@ const Dashboard = () => {
 
           {/* Recent Emotions */}
           <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Recent Emotions
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Recent Emotions
+              </h3>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {emotionHistory.length > 0 ? `Showing ${Math.min(emotionHistory.length, 9)} of ${emotionHistory.length} total` : 'No data'}
+              </span>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {emotionHistory.slice(-9).reverse().map((entry, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50"
-                >
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: emotionColors[entry.emotion] }}
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {entry.emotion.charAt(0).toUpperCase() + entry.emotion.slice(1)}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(entry.timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {(entry.confidence * 100).toFixed(0)}%
-                  </span>
-                </motion.div>
-              ))}
+              {emotionHistory.length > 0 ? (
+                emotionHistory.slice(-9).reverse().map((entry, index) => (
+                  <motion.div
+                    key={`${entry.timestamp}-${index}`}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50"
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: emotionColors[entry.emotion] || '#6B7280' }}
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {entry.emotion.charAt(0).toUpperCase() + entry.emotion.slice(1)}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(entry.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {(entry.confidence * 100).toFixed(0)}%
+                    </span>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="col-span-full text-center text-gray-500 dark:text-gray-400 py-8">
+                  No emotion data available yet. Start using the emotion detector to see results here.
+                </div>
+              )}
             </div>
           </div>
         </motion.div>
