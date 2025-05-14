@@ -464,7 +464,7 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
       {/* Fullscreen Chat */}
       {isFullscreenOpen && (
         <FullscreenChat
-          currentEmotion={currentEmotion}
+          currentMood={currentEmotion}
           emotionHistory={emotionHistory}
           onClose={() => setIsFullscreenOpen(false)}
         />
