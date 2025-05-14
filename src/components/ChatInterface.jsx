@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import FullscreenChat from './FullscreenChat';
 
 // Enhanced response system with categories and context
 const CHAT_RESPONSES = {
@@ -186,6 +187,7 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
   const [conversationContext, setConversationContext] = useState({
     topicCount: {},
     lastResponse: null,
@@ -444,6 +446,15 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
 
   return (
     <>
+      {/* Fullscreen Chat */}
+      {isFullscreenOpen && (
+        <FullscreenChat
+          currentEmotion={currentEmotion}
+          emotionHistory={emotionHistory}
+          onClose={() => setIsFullscreenOpen(false)}
+        />
+      )}
+      
       {/* Chat Toggle Button */}
       <button
         onClick={() => setIsChatOpen(!isChatOpen)}
@@ -485,11 +496,25 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
                     <p className="text-indigo-100 text-sm">Always here to listen and support</p>
                   </div>
                 </div>
-                {currentEmotion && (
-                  <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs">
-                    Feeling: {currentEmotion}
-                  </span>
-                )}
+                <div className="flex items-center space-x-2">
+                  {currentEmotion && (
+                    <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs">
+                      Feeling: {currentEmotion}
+                    </span>
+                  )}
+                  <button 
+                    onClick={() => {
+                      setIsChatOpen(false);
+                      setIsFullscreenOpen(true);
+                    }}
+                    className="p-1.5 hover:bg-white/10 rounded-full text-white"
+                    title="Open fullscreen chat"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {/* Chat messages */}

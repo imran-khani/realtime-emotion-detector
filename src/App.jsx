@@ -131,6 +131,7 @@ function App() {
         <div>
           <ChatInterface 
             currentEmotion={currentEmotion?.emotion} 
+            confidence={currentEmotion?.confidence}
             emotionHistory={emotionHistory} 
           />
         </div>
