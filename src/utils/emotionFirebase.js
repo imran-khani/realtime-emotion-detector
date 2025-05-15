@@ -16,196 +16,299 @@ import {
 } from "firebase/firestore";
 import { db, auth } from "../config/firebase";
 
-const EMOTIONS_COLLECTION = "emotions";
-const AGGREGATES_COLLECTION = "emotion_aggregates";
-const CURRENT_SESSION = "current_session";
+const EMOTIONS_COLLECTION = "user_emotions";
+const SESSION_COLLECTION = "sessions";
+const STATS_COLLECTION = "user_stats";
 
-// Save individual emotion (throttled)
+// Tracking variables
 let lastSaveTime = 0;
-const SAVE_INTERVAL = 5000; // Save every 5 seconds max
-let pendingEmotion = null;
+let emotionBuffer = [];
+let sessionId = null;
 
-export const saveEmotion = async (emotionData) => {
-  const now = Date.now();
+// Fix multiple session starts
+let sessionStartPromise = null;
+
+// Start a new session (singleton pattern)
+export const startSession = async () => {
   const user = auth.currentUser;
-  
   if (!user) {
-    console.error("No authenticated user");
-    return;
+    console.log("No authenticated user for session");
+    return null;
   }
   
-  // Update pending emotion
-  pendingEmotion = {
-    emotion: emotionData.emotion,
-    confidence: emotionData.confidence,
-    expressions: emotionData.expressions,
-    timestamp: now,
-    userId: user.uid
-  };
+  // Return existing promise if session is already being created
+  if (sessionStartPromise) {
+    return sessionStartPromise;
+  }
   
-  // Only save if enough time has passed
-  if (now - lastSaveTime >= SAVE_INTERVAL) {
-    lastSaveTime = now;
-    
+  // Return existing session if already created
+  if (sessionId) {
+    return sessionId;
+  }
+  
+  // Create new session promise
+  sessionStartPromise = (async () => {
     try {
-      // Save to detailed collection (less frequently)
-      await addDoc(collection(db, EMOTIONS_COLLECTION), {
-        ...pendingEmotion,
+      const sessionData = {
+        userId: user.uid,
+        startTime: Date.now(),
+        clientTimestamp: Date.now(),
+        endTime: null,
+        emotionCount: 0,
+        dominantEmotion: null,
         createdAt: serverTimestamp()
-      });
+      };
       
-      // Update aggregates
-      await updateEmotionAggregates(pendingEmotion);
-      
-      console.log("Emotion saved and aggregated");
+      console.log("Starting session for user:", user.uid);
+      const sessionDoc = await addDoc(collection(db, SESSION_COLLECTION), sessionData);
+      sessionId = sessionDoc.id;
+      console.log("Session started:", sessionId);
+      return sessionId;
     } catch (error) {
-      console.error("Error saving emotion:", error);
+      console.error("Error starting session:", error.message);
+      sessionStartPromise = null; // Reset on error
+      return null;
     }
-  } else {
-    // Still update aggregates for live data
-    await updateEmotionAggregates(pendingEmotion);
-  }
+  })();
+  
+  return sessionStartPromise;
 };
 
-// Update emotion aggregates (hourly buckets)
-const updateEmotionAggregates = async (emotionData) => {
+// Buffer emotions and save periodically
+export const trackEmotion = async (emotionData) => {
   const user = auth.currentUser;
   if (!user) return;
   
-  const now = new Date();
-  const hourKey = `${user.uid}-${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}`;
+  const now = Date.now();
   
-  const aggregateRef = doc(db, AGGREGATES_COLLECTION, hourKey);
+  // Add to buffer
+  emotionBuffer.push({
+    ...emotionData,
+    timestamp: now,
+    userId: user.uid
+  });
   
-  try {
-    const aggregateDoc = await getDoc(aggregateRef);
-    
-    if (aggregateDoc.exists()) {
-      // Update existing aggregate
-      await updateDoc(aggregateRef, {
-        [`emotions.${emotionData.emotion}`]: increment(1),
-        totalCount: increment(1),
-        lastUpdated: serverTimestamp(),
-        averageConfidence: increment(emotionData.confidence)
-      });
-    } else {
-      // Create new aggregate
-      await setDoc(aggregateRef, {
-        emotions: {
-          [emotionData.emotion]: 1
-        },
-        totalCount: 1,
-        averageConfidence: emotionData.confidence,
-        hour: hourKey,
-        timestamp: now.getTime(),
-        lastUpdated: serverTimestamp(),
-        userId: user.uid
-      });
-    }
-  } catch (error) {
-    console.error("Error updating aggregates:", error);
+  // Save every 10 seconds or when buffer reaches 10 items
+  if (now - lastSaveTime > 10000 || emotionBuffer.length >= 10) {
+    await saveBufferedEmotions();
+    lastSaveTime = now;
   }
 };
 
-// Get aggregated emotion history
-export const getEmotionHistory = async (limitCount = 168) => {
+// Save buffered emotions
+const saveBufferedEmotions = async () => {
+  if (emotionBuffer.length === 0) return;
+  
+  const user = auth.currentUser;
+  if (!user) {
+    console.log("No authenticated user to save emotions");
+    return;
+  }
+  
+  try {
+    // Start session if needed
+    if (!sessionId) {
+      await startSession();
+    }
+    
+    // Group emotions by type
+    const emotionGroups = emotionBuffer.reduce((acc, item) => {
+      if (!acc[item.emotion]) {
+        acc[item.emotion] = {
+          count: 0,
+          totalConfidence: 0,
+          timestamps: []
+        };
+      }
+      acc[item.emotion].count++;
+      acc[item.emotion].totalConfidence += item.confidence;
+      acc[item.emotion].timestamps.push(item.timestamp);
+      return acc;
+    }, {});
+    
+    // Save aggregated emotion data
+    const emotionRecord = {
+      userId: user.uid,
+      sessionId: sessionId || 'no-session',
+      timestamp: Date.now(),
+      period: new Date().toISOString().slice(0, 13), // Hour precision
+      emotions: emotionGroups,
+      totalCount: emotionBuffer.length,
+      createdAt: serverTimestamp()
+    };
+    
+    console.log("Saving emotion record:", emotionRecord.totalCount, "emotions");
+    await addDoc(collection(db, EMOTIONS_COLLECTION), emotionRecord);
+    
+    // Update user stats
+    await updateUserStats(emotionGroups);
+    
+    // Clear buffer
+    emotionBuffer = [];
+    console.log("Emotions saved successfully");
+    
+  } catch (error) {
+    console.error("Error saving emotions:", error.message);
+    // Keep buffer for retry
+  }
+};
+
+// Update user statistics
+const updateUserStats = async (emotionGroups) => {
+  const user = auth.currentUser;
+  if (!user) return;
+  
+  const statsRef = doc(db, STATS_COLLECTION, user.uid);
+  
+  try {
+    const updates = {};
+    Object.entries(emotionGroups).forEach(([emotion, data]) => {
+      updates[`emotions.${emotion}`] = increment(data.count);
+      updates[`totalCount`] = increment(data.count);
+    });
+    updates.lastActivity = serverTimestamp();
+    
+    await setDoc(statsRef, updates, { merge: true });
+  } catch (error) {
+    console.error("Error updating stats:", error);
+  }
+};
+
+// Get emotion history with proper aggregation
+export const getEmotionHistory = async (timeRange = 'day') => {
   const user = auth.currentUser;
   if (!user) return [];
   
   try {
-    // Get aggregated data for current user
-    const aggregateQuery = query(
-      collection(db, AGGREGATES_COLLECTION),
+    const now = Date.now();
+    let startTime;
+    
+    switch (timeRange) {
+      case 'hour':
+        startTime = now - (60 * 60 * 1000);
+        break;
+      case 'day':
+        startTime = now - (24 * 60 * 60 * 1000);
+        break;
+      case 'week':
+        startTime = now - (7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        startTime = now - (30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startTime = now - (24 * 60 * 60 * 1000);
+    }
+    
+    const q = query(
+      collection(db, EMOTIONS_COLLECTION),
       where("userId", "==", user.uid),
+      where("timestamp", ">=", startTime),
       orderBy("timestamp", "desc"),
-      limit(limitCount)
+      limit(100)
     );
     
-    const aggregateSnapshot = await getDocs(aggregateQuery);
-    const aggregates = aggregateSnapshot.docs.map(doc => ({
+    const snapshot = await getDocs(q);
+    const records = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    })).reverse();
+    }));
     
-    // Convert aggregates to emotion history format
+    // Convert to format expected by charts
     const emotionHistory = [];
-    
-    aggregates.forEach(aggregate => {
-      // Calculate average confidence
-      const avgConfidence = aggregate.totalCount > 0 
-        ? aggregate.averageConfidence / aggregate.totalCount 
-        : 0;
-      
-      // Add entries for each emotion in this hour
-      Object.entries(aggregate.emotions || {}).forEach(([emotion, count]) => {
-        // Distribute emotions across the hour
-        for (let i = 0; i < Math.min(count, 10); i++) { // Cap at 10 per hour for visualization
+    records.forEach(record => {
+      Object.entries(record.emotions).forEach(([emotion, data]) => {
+        // Distribute emotions across their timestamps
+        data.timestamps.forEach((timestamp, index) => {
           emotionHistory.push({
             emotion,
-            confidence: avgConfidence,
-            timestamp: aggregate.timestamp + (i * 60000), // Spread across minutes
-            isAggregate: true
+            confidence: data.totalConfidence / data.count,
+            timestamp,
+            isAggregated: true
           });
-        }
+        });
       });
     });
     
-    return emotionHistory;
+    return emotionHistory.sort((a, b) => a.timestamp - b.timestamp);
+    
   } catch (error) {
     console.error("Error getting emotion history:", error);
     return [];
   }
 };
 
-// Subscribe to emotion updates (uses aggregates for efficiency)
-export const subscribeToEmotions = (callback, limitCount = 168) => {
+// Subscribe to emotion updates
+export const subscribeToEmotions = (callback, timeRange = 'day') => {
   const user = auth.currentUser;
   if (!user) {
+    console.log("No authenticated user for subscription");
     callback([]);
     return () => {};
   }
   
+  const now = Date.now();
+  let startTime;
+  
+  switch (timeRange) {
+    case 'hour':
+      startTime = now - (60 * 60 * 1000);
+      break;
+    case 'day':
+      startTime = now - (24 * 60 * 60 * 1000);
+      break;
+    case 'week':
+      startTime = now - (7 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      startTime = now - (24 * 60 * 60 * 1000);
+  }
+  
   try {
-    const aggregateQuery = query(
-      collection(db, AGGREGATES_COLLECTION),
+    // Simple query first
+    const q = query(
+      collection(db, EMOTIONS_COLLECTION),
       where("userId", "==", user.uid),
-      orderBy("timestamp", "desc"),
-      limit(limitCount)
+      limit(100)
     );
     
-    return onSnapshot(aggregateQuery, (snapshot) => {
-      console.log("Aggregate update: got", snapshot.docs.length, "hours of data");
-      
-      const aggregates = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })).reverse();
-      
-      // Convert to emotion format
-      const emotionHistory = [];
-      
-      aggregates.forEach(aggregate => {
-        const avgConfidence = aggregate.totalCount > 0 
-          ? aggregate.averageConfidence / aggregate.totalCount 
-          : 0;
+    return onSnapshot(q, 
+      (snapshot) => {
+        console.log(`Got ${snapshot.docs.length} emotion records`);
+        const records = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
         
-        Object.entries(aggregate.emotions || {}).forEach(([emotion, count]) => {
-          for (let i = 0; i < Math.min(count, 10); i++) {
-            emotionHistory.push({
-              emotion,
-              confidence: avgConfidence,
-              timestamp: aggregate.timestamp + (i * 60000),
-              isAggregate: true
-            });
-          }
+        // Filter by time in memory
+        const filteredRecords = records.filter(r => 
+          r.timestamp && r.timestamp >= startTime
+        );
+        
+        // Convert to emotion history format
+        const emotionHistory = [];
+        filteredRecords.forEach(record => {
+          Object.entries(record.emotions || {}).forEach(([emotion, data]) => {
+            if (data.timestamps) {
+              data.timestamps.forEach((timestamp) => {
+                emotionHistory.push({
+                  emotion,
+                  confidence: data.totalConfidence / data.count,
+                  timestamp,
+                  isAggregated: true
+                });
+              });
+            }
+          });
         });
-      });
-      
-      callback(emotionHistory);
-    }, (error) => {
-      console.error("Error in subscription:", error);
-      callback([]);
-    });
+        
+        callback(emotionHistory.sort((a, b) => a.timestamp - b.timestamp));
+      }, 
+      (error) => {
+        console.error("Error in subscription:", error);
+        callback([]);
+      }
+    );
   } catch (error) {
     console.error("Error setting up subscription:", error);
     callback([]);
@@ -213,36 +316,37 @@ export const subscribeToEmotions = (callback, limitCount = 168) => {
   }
 };
 
-// Get current session stats (for immediate feedback)
-export const getCurrentSessionStats = async () => {
+// End session and save final stats
+export const endSession = async () => {
+  if (!sessionId || !auth.currentUser) return;
+  
   try {
-    const sessionRef = doc(db, CURRENT_SESSION, "stats");
-    const sessionDoc = await getDoc(sessionRef);
+    await updateDoc(doc(db, SESSION_COLLECTION, sessionId), {
+      endTime: serverTimestamp()
+    });
     
-    if (sessionDoc.exists()) {
-      return sessionDoc.data();
-    }
+    // Save any remaining buffered emotions
+    await saveBufferedEmotions();
     
-    return null;
+    sessionId = null;
   } catch (error) {
-    console.error("Error getting session stats:", error);
-    return null;
+    console.error("Error ending session:", error);
   }
 };
 
-// Update current session stats
-export const updateSessionStats = async (emotion, confidence) => {
+// Get user statistics
+export const getUserStats = async () => {
+  const user = auth.currentUser;
+  if (!user) return null;
+  
   try {
-    const sessionRef = doc(db, CURRENT_SESSION, "stats");
-    
-    await setDoc(sessionRef, {
-      lastEmotion: emotion,
-      lastConfidence: confidence,
-      lastUpdated: serverTimestamp(),
-      [`emotions.${emotion}`]: increment(1),
-      totalDetections: increment(1)
-    }, { merge: true });
+    const statsDoc = await getDoc(doc(db, STATS_COLLECTION, user.uid));
+    if (statsDoc.exists()) {
+      return statsDoc.data();
+    }
+    return null;
   } catch (error) {
-    console.error("Error updating session stats:", error);
+    console.error("Error getting user stats:", error);
+    return null;
   }
 };

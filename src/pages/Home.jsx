@@ -12,13 +12,32 @@ import {
   ArrowRightIcon,
   SparklesIcon 
 } from '@heroicons/react/24/outline';
-import { saveEmotion, subscribeToEmotions, updateSessionStats } from '../utils/emotionFirebase';
-import { useOptimizedEmotionTracking } from '../utils/useOptimizedEmotionTracking';
+import { trackEmotion, subscribeToEmotions, startSession, endSession } from '../utils/emotionFirebase';
 
 const Home = () => {
-  const { currentEmotion, recentEmotions, trackEmotion } = useOptimizedEmotionTracking();
+  const [currentEmotion, setCurrentEmotion] = useState(null);
   const [emotionHistory, setEmotionHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [localEmotions, setLocalEmotions] = useState([]); // For immediate feedback
+
+  // Start session when component mounts (only once)
+  useEffect(() => {
+    let mounted = true;
+    
+    const initSession = async () => {
+      if (mounted) {
+        await startSession();
+      }
+    };
+    
+    initSession();
+    
+    // Cleanup on unmount
+    return () => {
+      mounted = false;
+      endSession();
+    };
+  }, []); // Empty dependency array - runs only once
 
   // Subscribe to emotion history from Firebase
   useEffect(() => {
@@ -26,17 +45,26 @@ const Home = () => {
     const unsubscribe = subscribeToEmotions((emotions) => {
       setEmotionHistory(emotions);
       setLoading(false);
-    });
+    }, 'day'); // Get last 24 hours
 
     return () => unsubscribe();
   }, []);
 
   const handleEmotionDetected = async (emotionData) => {
-    // Use optimized tracking for immediate feedback
-    trackEmotion(emotionData);
+    // Update current emotion for display
+    setCurrentEmotion({
+      emotion: emotionData.emotion,
+      confidence: emotionData.confidence
+    });
     
-    // Update session stats for real-time display
-    updateSessionStats(emotionData.emotion, emotionData.confidence);
+    // Add to local emotions for immediate feedback
+    setLocalEmotions(prev => [...prev.slice(-19), {
+      ...emotionData,
+      timestamp: Date.now()
+    }]);
+    
+    // Track emotion (buffered saving)
+    trackEmotion(emotionData);
   };
 
   return (
@@ -106,7 +134,7 @@ const Home = () => {
               </h2>
             </div>
             <div className="p-4 overflow-x-auto">
-              <EmotionAnalytics emotionHistory={[...emotionHistory, ...recentEmotions]} />
+              <EmotionAnalytics emotionHistory={[...emotionHistory, ...localEmotions]} />
             </div>
           </div>
         </div>

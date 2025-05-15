@@ -1,0 +1,30 @@
+// COPY THESE RULES TO FIREBASE CONSOLE
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow users to read/write their own data
+    match /user_emotions/{document=**} {
+      allow read: if request.auth != null && request.auth.uid != null;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+    
+    // Allow users to manage their sessions
+    match /sessions/{document=**} {
+      allow read: if request.auth != null && request.auth.uid != null;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+    
+    // Allow users to access their stats
+    match /user_stats/{userId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == userId;
+    }
+  }
+}

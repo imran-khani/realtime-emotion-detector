@@ -55,7 +55,7 @@ const Dashboard = () => {
       }
       setEmotionHistory(emotions);
       setLoading(false);
-    }, 500); // Get more data for dashboard
+    }, 'week'); // Get last week's data for dashboard
     
     return () => unsubscribe();
   }, []);
