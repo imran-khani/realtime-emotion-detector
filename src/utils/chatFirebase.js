@@ -80,9 +80,9 @@ export const getChatHistory = async (sessionId, limitCount = 50) => {
   if (!user || !sessionId) return [];
   
   try {
+    // Simplified query that only requires sessionId index
     const q = query(
       collection(db, MESSAGES_COLLECTION),
-      where("userId", "==", user.uid),
       where("sessionId", "==", sessionId),
       orderBy("timestamp", "desc"),
       limit(limitCount)
@@ -94,8 +94,11 @@ export const getChatHistory = async (sessionId, limitCount = 50) => {
       ...doc.data()
     }));
     
+    // Filter by userId in memory for security
+    const userMessages = messages.filter(msg => msg.userId === user.uid);
+    
     // Return in chronological order
-    return messages.reverse();
+    return userMessages.reverse();
   } catch (error) {
     console.error("Error getting chat history:", error);
     return [];
@@ -111,9 +114,9 @@ export const subscribeToChatMessages = (sessionId, callback) => {
   }
   
   try {
+    // Simplified query that only requires sessionId index
     const q = query(
       collection(db, MESSAGES_COLLECTION),
-      where("userId", "==", user.uid),
       where("sessionId", "==", sessionId),
       orderBy("timestamp", "asc")
     );
@@ -125,12 +128,14 @@ export const subscribeToChatMessages = (sessionId, callback) => {
         const messages = [];
         snapshot.docs.forEach(doc => {
           const data = doc.data();
-          // Ensure we don't have duplicate messages
-          const message = {
-            id: doc.id,
-            ...data
-          };
-          messages.push(message);
+          // Filter by userId in memory
+          if (data.userId === user.uid) {
+            const message = {
+              id: doc.id,
+              ...data
+            };
+            messages.push(message);
+          }
         });
         
         // Remove duplicates based on timestamp and text
@@ -163,10 +168,10 @@ export const getChatSessions = async (limitCount = 10) => {
   if (!user) return [];
   
   try {
+    // Simplified query that only requires userId index
     const q = query(
       collection(db, CHAT_COLLECTION),
       where("userId", "==", user.uid),
-      orderBy("lastActive", "desc"),
       limit(limitCount)
     );
     
@@ -175,6 +180,9 @@ export const getChatSessions = async (limitCount = 10) => {
       id: doc.id,
       ...doc.data()
     }));
+    
+    // Sort by lastActive in memory
+    sessions.sort((a, b) => b.lastActive - a.lastActive);
     
     return sessions;
   } catch (error) {

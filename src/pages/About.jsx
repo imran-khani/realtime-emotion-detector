@@ -49,12 +49,12 @@ const techStack = [
   },
   {
     category: 'AI/ML',
-    technologies: ['face-api.js', 'TensorFlow.js', 'Hugging Face API'],
+    technologies: ['face-api.js','OpenAI'],
     description: 'Advanced emotion detection and natural language processing'
   },
   {
     category: 'Backend',
-    technologies: ['Vite', 'Bun', 'LocalStorage API'],
+    technologies: ['Vite', 'Bun', 'Firebase', 'Node.js'],
     description: 'Fast development server with efficient data management'
   }
 ];
