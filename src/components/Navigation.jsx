@@ -20,6 +20,21 @@ const Navigation = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
+  // Extract username from email or use displayName
+  const getUserDisplayName = () => {
+    if (!user) return '';
+    
+    // If user has a displayName (from Google auth), use it
+    if (user.displayName) {
+      return user.displayName.split(' ')[0]; // First name only
+    }
+    
+    // Otherwise, extract username from email
+    const email = user.email || '';
+    const username = email.split('@')[0];
+    return username.charAt(0).toUpperCase() + username.slice(1); // Capitalize first letter
+  };
+
   const navItems = [
     { path: '/app/home', label: 'Home', icon: HomeIcon },
     { path: '/app/dashboard', label: 'Dashboard', icon: ChartBarIcon },
@@ -72,9 +87,12 @@ const Navigation = () => {
             {/* User Menu */}
             {user && (
               <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {user.email}
-                </span>
+                <div className="flex items-center space-x-2">
+                  <UserCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {getUserDisplayName()}
+                  </span>
+                </div>
                 <button
                   onClick={handleLogout}
                   className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
@@ -135,8 +153,9 @@ const Navigation = () => {
               {/* Mobile User Menu */}
               {user && (
                 <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-                  <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-300">
-                    {user.email}
+                  <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-300 flex items-center space-x-2">
+                    <UserCircleIcon className="w-5 h-5" />
+                    <span className="font-medium">{getUserDisplayName()}</span>
                   </div>
                   <button
                     onClick={() => {
