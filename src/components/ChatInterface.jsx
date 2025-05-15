@@ -187,7 +187,7 @@ const MODEL_NAME = "gpt-4o-mini";
 // Access environment variables in Vite
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
 
-const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
+const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscreenToggle }) => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -511,7 +511,12 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
         <FullscreenChat
           currentMood={currentEmotion}
           emotionHistory={emotionHistory}
-          onClose={() => setIsFullscreenOpen(false)}
+          onClose={() => {
+            setIsFullscreenOpen(false);
+            if (onFullscreenToggle) {
+              onFullscreenToggle(false);
+            }
+          }}
         />
       )}
       
@@ -566,6 +571,9 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
                     onClick={() => {
                       setIsChatOpen(false);
                       setIsFullscreenOpen(true);
+                      if (onFullscreenToggle) {
+                        onFullscreenToggle(true);
+                      }
                     }}
                     className="p-1.5 hover:bg-white/10 rounded-full text-white"
                     title="Open fullscreen chat"

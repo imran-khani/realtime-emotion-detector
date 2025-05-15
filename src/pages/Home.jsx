@@ -19,6 +19,7 @@ const Home = () => {
   const [emotionHistory, setEmotionHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [localEmotions, setLocalEmotions] = useState([]); // For immediate feedback
+  const [isFullscreenChatOpen, setIsFullscreenChatOpen] = useState(false);
 
   // Start session when component mounts (only once)
   useEffect(() => {
@@ -100,6 +101,7 @@ const Home = () => {
               <div className="aspect-[4/3] relative">
                 <WebcamCapture
                   onEmotionDetected={handleEmotionDetected}
+                  isAutoDetecting={!isFullscreenChatOpen}
                 />
               </div>
             </div>
@@ -148,7 +150,8 @@ const Home = () => {
           <ChatInterface 
             currentEmotion={currentEmotion?.emotion} 
             confidence={currentEmotion?.confidence}
-            emotionHistory={emotionHistory} 
+            emotionHistory={emotionHistory}
+            onFullscreenToggle={setIsFullscreenChatOpen}
           />
         </div>
       </main>

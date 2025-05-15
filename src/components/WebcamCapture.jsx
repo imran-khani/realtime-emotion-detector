@@ -625,6 +625,20 @@ const WebcamCapture = ({
         </div>
       )}
 
+      {!isAutoDetecting && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+          <div className="text-white text-center p-4">
+            <div className="mb-2">
+              <svg className="w-12 h-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-sm">Detection paused</p>
+            <p className="text-xs opacity-70">Chat is in fullscreen mode</p>
+          </div>
+        </div>
+      )}
+
       {!isModelLoaded && !error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/60">
           <div className="text-white text-center p-4">
