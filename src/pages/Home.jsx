@@ -9,7 +9,6 @@ import EmotionJournal from '../components/EmotionJournal';
 import EmotionalFeedback from '../components/EmotionalFeedback';
 import EmotionInsights from '../components/EmotionInsights';
 import { 
-  ChartBarIcon, 
   ArrowRightIcon,
   SparklesIcon 
 } from '@heroicons/react/24/outline';
@@ -66,13 +65,7 @@ const Home = () => {
               </div>
             )}
             <div className="flex space-x-3">
-              <Link
-                to="/app/dashboard"
-                className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              >
-                <ChartBarIcon className="w-4 h-4 mr-1.5" />
-                Dashboard
-              </Link>
+              {/* Quick actions can be added here if needed */}
             </div>
           </div>
         </div>
@@ -90,7 +83,7 @@ const Home = () => {
               <div className="aspect-[4/3] relative">
                 <WebcamCapture
                   onEmotionDetected={handleEmotionDetected}
-                  detectionFrequency={1000}
+                  detectionFrequency={3000}
                 />
               </div>
             </div>
@@ -134,28 +127,6 @@ const Home = () => {
           <EmotionJournal emotionHistory={emotionHistory} />
           <EmotionInsights emotionHistory={emotionHistory} />
         </div>
-
-        {/* Call to Action */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-lg p-6 text-center"
-        >
-          <h3 className="text-xl font-bold text-white mb-2">
-            Want to see your emotional journey?
-          </h3>
-          <p className="text-indigo-100 mb-4">
-            View detailed analytics and insights about your emotional patterns over time.
-          </p>
-          <Link
-            to="/app/dashboard"
-            className="inline-flex items-center px-6 py-3 bg-white text-indigo-600 font-semibold rounded-lg shadow hover:bg-gray-100 transition-colors"
-          >
-            Go to Dashboard
-            <ArrowRightIcon className="w-5 h-5 ml-2" />
-          </Link>
-        </motion.div>
 
         <div>
           <ChatInterface 
