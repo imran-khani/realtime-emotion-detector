@@ -12,42 +12,31 @@ import {
   ArrowRightIcon,
   SparklesIcon 
 } from '@heroicons/react/24/outline';
+import { saveEmotion, subscribeToEmotions, updateSessionStats } from '../utils/emotionFirebase';
+import { useOptimizedEmotionTracking } from '../utils/useOptimizedEmotionTracking';
 
 const Home = () => {
-  const [currentEmotion, setCurrentEmotion] = useState(null);
-  const [emotionHistory, setEmotionHistory] = useState(() => {
-    const saved = localStorage.getItem('emotionHistory');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const { currentEmotion, recentEmotions, trackEmotion } = useOptimizedEmotionTracking();
+  const [emotionHistory, setEmotionHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Load emotion history on mount
+  // Subscribe to emotion history from Firebase
   useEffect(() => {
-    const saved = localStorage.getItem('emotionHistory');
-    if (saved) {
-      setEmotionHistory(JSON.parse(saved));
-    }
-  }, []);
-
-  // Save emotion history when it changes
-  useEffect(() => {
-    localStorage.setItem('emotionHistory', JSON.stringify(emotionHistory));
-  }, [emotionHistory]);
-
-  const handleEmotionDetected = (emotionData) => {
-    setCurrentEmotion({
-      emotion: emotionData.emotion,
-      confidence: emotionData.confidence
+    setLoading(true);
+    const unsubscribe = subscribeToEmotions((emotions) => {
+      setEmotionHistory(emotions);
+      setLoading(false);
     });
 
-    const newHistory = [...emotionHistory, {
-      emotion: emotionData.emotion,
-      confidence: emotionData.confidence,
-      timestamp: Date.now(),
-      expressions: emotionData.expressions
-    }].slice(-300); // Keep last 300 entries
+    return () => unsubscribe();
+  }, []);
 
-    setEmotionHistory(newHistory);
-    localStorage.setItem('emotionHistory', JSON.stringify(newHistory));
+  const handleEmotionDetected = async (emotionData) => {
+    // Use optimized tracking for immediate feedback
+    trackEmotion(emotionData);
+    
+    // Update session stats for real-time display
+    updateSessionStats(emotionData.emotion, emotionData.confidence);
   };
 
   return (
@@ -83,7 +72,6 @@ const Home = () => {
               <div className="aspect-[4/3] relative">
                 <WebcamCapture
                   onEmotionDetected={handleEmotionDetected}
-                  detectionFrequency={3000}
                 />
               </div>
             </div>
@@ -118,7 +106,7 @@ const Home = () => {
               </h2>
             </div>
             <div className="p-4 overflow-x-auto">
-              <EmotionAnalytics emotionHistory={emotionHistory} />
+              <EmotionAnalytics emotionHistory={[...emotionHistory, ...recentEmotions]} />
             </div>
           </div>
         </div>

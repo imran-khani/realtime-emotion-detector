@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HomeIcon,
@@ -7,21 +7,35 @@ import {
   InformationCircleIcon,
   Bars3Icon,
   XMarkIcon,
-  FaceSmileIcon
+  FaceSmileIcon,
+  ArrowRightOnRectangleIcon,
+  UserCircleIcon
 } from '@heroicons/react/24/outline';
 import ThemeToggle from './ThemeToggle';
+import { useAuth } from '../contexts/AuthContext';
 
 const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   const navItems = [
-    { path: '/app', label: 'Home', icon: HomeIcon },
+    { path: '/app/home', label: 'Home', icon: HomeIcon },
     { path: '/app/dashboard', label: 'Dashboard', icon: ChartBarIcon },
     { path: '/app/about', label: 'About', icon: InformationCircleIcon },
   ];
 
   const isActive = (path) => location.pathname === path;
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   return (
     <nav className="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50">
@@ -54,6 +68,22 @@ const Navigation = () => {
               </Link>
             ))}
             <ThemeToggle />
+            
+            {/* User Menu */}
+            {user && (
+              <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-200 dark:border-gray-700">
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {user.email}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+                >
+                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -101,6 +131,27 @@ const Navigation = () => {
                   </div>
                 </Link>
               ))}
+              
+              {/* Mobile User Menu */}
+              {user && (
+                <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
+                  <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-300">
+                    {user.email}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                      <span>Logout</span>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         )}

@@ -24,6 +24,7 @@ import {
   Legend,
   Filler
 } from 'chart.js';
+import { subscribeToEmotions } from '../utils/emotionFirebase';
 
 ChartJS.register(
   CategoryScale,
@@ -42,48 +43,26 @@ const Dashboard = () => {
   const [emotionHistory, setEmotionHistory] = useState([]);
   const [timeRange, setTimeRange] = useState('week'); // week, month, year
   const [selectedEmotion, setSelectedEmotion] = useState(null);
-  const [refreshInterval, setRefreshInterval] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Function to load emotion history from localStorage
-  const loadEmotionHistory = () => {
-    const saved = localStorage.getItem('emotionHistory');
-    if (saved) {
-      const parsedData = JSON.parse(saved);
-      console.log('Dashboard: Loaded emotions:', parsedData.length);
-      setEmotionHistory(parsedData);
-    } else {
-      console.log('Dashboard: No emotions in localStorage');
-    }
-  };
-
-  // Initial load and setup auto-refresh
+  // Subscribe to emotion history from Firebase
   useEffect(() => {
-    loadEmotionHistory();
-    
-    // Refresh data every 5 seconds
-    const interval = setInterval(() => {
-      loadEmotionHistory();
-    }, 5000);
-    
-    setRefreshInterval(interval);
-    
-    // Listen for storage changes from other tabs
-    const handleStorageChange = (e) => {
-      if (e.key === 'emotionHistory') {
-        loadEmotionHistory();
+    setLoading(true);
+    const unsubscribe = subscribeToEmotions((emotions) => {
+      console.log('Dashboard: Received emotions:', emotions.length);
+      if (emotions.length > 0) {
+        console.log('Sample emotion:', emotions[0]);
       }
-    };
+      setEmotionHistory(emotions);
+      setLoading(false);
+    }, 500); // Get more data for dashboard
     
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    return () => unsubscribe();
   }, []);
 
   // Calculate statistics
   const getEmotionStats = () => {
+    console.log('Calculating stats for', emotionHistory.length, 'emotions');
     if (!emotionHistory.length) return null;
 
     const now = Date.now();
@@ -103,13 +82,20 @@ const Dashboard = () => {
         cutoffTime = 0;
     }
 
-    const filteredHistory = emotionHistory.filter(entry => entry.timestamp >= cutoffTime);
+    const filteredHistory = emotionHistory.filter(entry => {
+      const timestamp = entry.timestamp || 0;
+      return timestamp >= cutoffTime;
+    });
+    
+    console.log('Filtered to', filteredHistory.length, 'emotions for range:', timeRange);
     
     const totalCount = emotionHistory.length; // Total ever recorded
     const filteredCount = filteredHistory.length; // Filtered by time range
     
     const emotionCounts = filteredHistory.reduce((acc, entry) => {
-      acc[entry.emotion] = (acc[entry.emotion] || 0) + 1;
+      if (entry.emotion) {
+        acc[entry.emotion] = (acc[entry.emotion] || 0) + 1;
+      }
       return acc;
     }, {});
 
@@ -117,10 +103,11 @@ const Dashboard = () => {
       .sort((a, b) => b[1] - a[1])[0]?.[0];
 
     const averageConfidence = filteredCount > 0 ? 
-      filteredHistory.reduce((sum, entry) => sum + entry.confidence, 0) / filteredCount : 0;
+      filteredHistory.reduce((sum, entry) => sum + (entry.confidence || 0), 0) / filteredCount : 0;
 
     // Calculate emotion trends
     const trends = calculateTrends(filteredHistory, timeRange);
+    console.log('Calculated trends:', Object.keys(trends).length, 'time points');
 
     return {
       emotionCounts,
@@ -138,9 +125,15 @@ const Dashboard = () => {
     const now = new Date();
     
     // Sort history by timestamp
-    const sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
+    const sortedHistory = [...history].sort((a, b) => {
+      const aTime = a.timestamp || 0;
+      const bTime = b.timestamp || 0;
+      return aTime - bTime;
+    });
     
     sortedHistory.forEach(entry => {
+      if (!entry.timestamp || !entry.emotion) return; // Skip invalid entries
+      
       const date = new Date(entry.timestamp);
       let key;
       
@@ -348,7 +341,11 @@ const Dashboard = () => {
             <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
               <ClockIcon className="h-4 w-4" />
               <span>Live updates</span>
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              {loading ? (
+                <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+              ) : (
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              )}
             </div>
           </div>
 
@@ -419,11 +416,11 @@ const Dashboard = () => {
                 Emotion Trends
               </h3>
               <div className="h-80">
-                {stats ? (
+                {!loading && stats ? (
                   <Line data={lineChartData} options={chartOptions} />
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                    No data available
+                    {loading ? 'Loading data...' : 'No data available'}
                   </div>
                 )}
               </div>
@@ -435,14 +432,14 @@ const Dashboard = () => {
                 Emotion Distribution
               </h3>
               <div className="h-80">
-                {stats ? (
+                {!loading && stats ? (
                   <Doughnut data={pieChartData} options={{
                     ...chartOptions,
                     cutout: '50%'
                   }} />
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                    No data available
+                    {loading ? 'Loading data...' : 'No data available'}
                   </div>
                 )}
               </div>

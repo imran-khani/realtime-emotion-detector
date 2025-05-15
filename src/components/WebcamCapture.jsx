@@ -1,5 +1,6 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
+import { emotionConfig } from '../config/emotionConfig';
 
 const MODELS_URLS = [
   '/models', // Prioritize local models
@@ -19,7 +20,7 @@ const LANDMARK_COLORS = {
 
 const WebcamCapture = ({ 
   onEmotionDetected,
-  detectionFrequency = 10,
+  detectionFrequency = emotionConfig.DETECTION_FREQUENCY,
   isAutoDetecting = true
 }) => {
   const webcamRef = useRef(null);
