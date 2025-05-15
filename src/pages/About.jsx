@@ -41,24 +41,21 @@ const features = [
   }
 ];
 
-const teamMembers = [
+const techStack = [
   {
-    name: 'Sarah Johnson',
-    role: 'Lead Developer',
-    description: 'Expert in AI and emotion recognition systems',
-    image: '/api/placeholder/150/150'
+    category: 'Frontend',
+    technologies: ['React.js', 'Tailwind CSS', 'Material-UI', 'Framer Motion'],
+    description: 'Modern UI framework with beautiful animations and responsive design'
   },
   {
-    name: 'Dr. Michael Chen',
-    role: 'Psychology Advisor',
-    description: 'Clinical psychologist specializing in emotional intelligence',
-    image: '/api/placeholder/150/150'
+    category: 'AI/ML',
+    technologies: ['face-api.js', 'TensorFlow.js', 'Hugging Face API'],
+    description: 'Advanced emotion detection and natural language processing'
   },
   {
-    name: 'Emily Rodriguez',
-    role: 'UX Designer',
-    description: 'Creating intuitive experiences for emotional wellness',
-    image: '/api/placeholder/150/150'
+    category: 'Backend',
+    technologies: ['Vite', 'Bun', 'LocalStorage API'],
+    description: 'Fast development server with efficient data management'
   }
 ];
 
@@ -142,7 +139,7 @@ const About = () => {
         </motion.div>
       </div>
 
-      {/* Team Section */}
+      {/* Technology Stack Section */}
       <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0 }}
@@ -150,30 +147,32 @@ const About = () => {
           transition={{ delay: 0.4, duration: 0.6 }}
         >
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">
-            Meet Our Team
+            Technology Stack
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {teamMembers.map((member, index) => (
+            {techStack.map((tech, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.1 * index, duration: 0.6 }}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center"
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6"
               >
-                <img
-                  src={member.image}
-                  alt={member.name}
-                  className="w-32 h-32 rounded-full mx-auto mb-4 bg-gray-200 dark:bg-gray-700"
-                />
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
-                  {member.name}
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                  {tech.category}
                 </h3>
-                <p className="text-indigo-600 dark:text-indigo-400 mb-3">
-                  {member.role}
-                </p>
+                <div className="mb-4">
+                  {tech.technologies.map((item, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-block bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 px-3 py-1 rounded-full text-sm font-medium mr-2 mb-2"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
                 <p className="text-gray-600 dark:text-gray-300 text-sm">
-                  {member.description}
+                  {tech.description}
                 </p>
               </motion.div>
             ))}
