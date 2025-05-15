@@ -11,6 +11,7 @@ import TermsOfService from './pages/TermsOfService';
 import LandingPage from './components/LandingPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ChatHistory from './pages/ChatHistory';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
               <Route index element={<Navigate to="/app/home" replace />} />
               <Route path="home" element={<Home />} />
               <Route path="dashboard" element={<Dashboard />} />
+              <Route path="chat-history" element={<ChatHistory />} />
               <Route path="about" element={<About />} />
               <Route path="privacy" element={<PrivacyPolicy />} />
               <Route path="terms" element={<TermsOfService />} />

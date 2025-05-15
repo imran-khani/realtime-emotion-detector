@@ -2,6 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import FullscreenChat from './FullscreenChat';
+import { 
+  createChatSession, 
+  saveMessage, 
+  subscribeToChatMessages,
+  getChatHistory 
+} from '../utils/chatFirebase';
 
 // Enhanced response system with categories and context
 const CHAT_RESPONSES = {
@@ -193,8 +199,41 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
     lastResponse: null,
     suggestedActivity: false
   });
+  const [sessionId, setSessionId] = useState(null);
+  const [loading, setLoading] = useState(false);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
+  const unsubscribeRef = useRef(null);
+
+  // Initialize chat session when component mounts
+  useEffect(() => {
+    const initializeChat = async () => {
+      setLoading(true);
+      const newSessionId = await createChatSession();
+      if (newSessionId) {
+        setSessionId(newSessionId);
+        
+        // Load previous messages if any
+        const history = await getChatHistory(newSessionId);
+        setMessages(history);
+        
+        // Subscribe to real-time updates
+        unsubscribeRef.current = subscribeToChatMessages(newSessionId, (updatedMessages) => {
+          setMessages(updatedMessages);
+        });
+      }
+      setLoading(false);
+    };
+    
+    initializeChat();
+    
+    // Cleanup on unmount
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
+  }, []);
 
   const generateAIResponse = async (userMessage, emotion) => {
     try {
@@ -304,15 +343,21 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
     }
   };
 
-  const addMessage = (text, sender, emotion) => {
+  const addMessage = async (text, sender, emotion) => {
     const newMessage = {
-      id: Date.now(),
       text,
       sender,
       emotion,
       timestamp: Date.now()
     };
-    setMessages(prev => [...prev, newMessage]);
+    
+    // Save to Firebase
+    if (sessionId) {
+      await saveMessage(newMessage, sessionId);
+    }
+    
+    // For immediate UI update (will be replaced by subscription)
+    setMessages(prev => [...prev, { ...newMessage, id: Date.now() }]);
   };
 
   const generateResponse = (userMessage, emotion) => {
@@ -544,7 +589,15 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory }) => {
               {/* Chat messages */}
               <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50 dark:bg-gray-900/50">
                 <AnimatePresence>
-                  {messages.length === 0 ? (
+                  {loading ? (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-center text-gray-500 dark:text-gray-400 mt-6"
+                    >
+                      <p className="text-sm">Loading chat...</p>
+                    </motion.div>
+                  ) : messages.length === 0 ? (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}

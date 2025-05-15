@@ -1,6 +1,13 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { 
+  createChatSession, 
+  saveMessage, 
+  subscribeToChatMessages,
+  getChatHistory,
+  getChatSessions 
+} from '../utils/chatFirebase';
 
 const MODEL_NAME = "gpt-4o-mini";
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
@@ -71,6 +78,9 @@ const FullscreenChat = ({ currentMood, emotionHistory, onClose }) => {
   const inputRef = useRef(null);
   const [showEmojis, setShowEmojis] = useState(false);
   const hasInitialized = useRef(false);
+  const [sessionId, setSessionId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const unsubscribeRef = useRef(null);
   
   // Handle key press for sending messages with Enter
   const handleKeyPress = (e) => {
@@ -82,8 +92,45 @@ const FullscreenChat = ({ currentMood, emotionHistory, onClose }) => {
   
   // Initialize chat - removed automatic welcome message
   useEffect(() => {
+    const initializeChat = async () => {
+      setLoading(true);
+      
+      // Get the most recent session or create a new one
+      const sessions = await getChatSessions(1);
+      let activeSessionId;
+      
+      if (sessions.length > 0 && sessions[0].lastActive > Date.now() - 30 * 60 * 1000) { // Last 30 minutes
+        activeSessionId = sessions[0].id;
+      } else {
+        activeSessionId = await createChatSession();
+      }
+      
+      if (activeSessionId) {
+        setSessionId(activeSessionId);
+        
+        // Load chat history
+        const history = await getChatHistory(activeSessionId);
+        setMessages(history);
+        
+        // Subscribe to real-time updates
+        unsubscribeRef.current = subscribeToChatMessages(activeSessionId, (updatedMessages) => {
+          setMessages(updatedMessages);
+        });
+      }
+      
+      setLoading(false);
+    };
+    
+    initializeChat();
     // Focus on input when component mounts
     inputRef.current?.focus();
+    
+    // Cleanup on unmount
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
   }, []);
   
   // Scroll to bottom when new messages arrive
@@ -263,15 +310,21 @@ const FullscreenChat = ({ currentMood, emotionHistory, onClose }) => {
   };
 
   // Add message to chat
-  const addMessage = (text, sender, emotion) => {
+  const addMessage = async (text, sender, emotion) => {
     const newMessage = {
-      id: Date.now(),
       text,
       sender,
       emotion,
       timestamp: Date.now()
     };
-    setMessages(prev => [...prev, newMessage]);
+    
+    // Save to Firebase
+    if (sessionId) {
+      await saveMessage(newMessage, sessionId);
+    }
+    
+    // For immediate UI update (will be replaced by subscription)
+    setMessages(prev => [...prev, { ...newMessage, id: Date.now() }]);
   };
 
   // Format time for display
@@ -309,7 +362,15 @@ const FullscreenChat = ({ currentMood, emotionHistory, onClose }) => {
         {/* Chat area */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-3 space-y-3 bg-gray-50 dark:bg-gray-900">
           <AnimatePresence>
-            {messages.length === 0 ? (
+            {loading ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center text-gray-500 dark:text-gray-400 mt-6"
+              >
+                <p className="text-sm">Loading chat history...</p>
+              </motion.div>
+            ) : messages.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

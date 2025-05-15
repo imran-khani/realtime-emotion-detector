@@ -9,7 +9,8 @@ import {
   XMarkIcon,
   FaceSmileIcon,
   ArrowRightOnRectangleIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,6 +39,7 @@ const Navigation = () => {
   const navItems = [
     { path: '/app/home', label: 'Home', icon: HomeIcon },
     { path: '/app/dashboard', label: 'Dashboard', icon: ChartBarIcon },
+    { path: '/app/chat-history', label: 'Chat History', icon: ChatBubbleLeftRightIcon },
     { path: '/app/about', label: 'About', icon: InformationCircleIcon },
   ];
 
