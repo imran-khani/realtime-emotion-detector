@@ -118,13 +118,32 @@ export const subscribeToChatMessages = (sessionId, callback) => {
       orderBy("timestamp", "asc")
     );
     
+    let initialLoad = true;
+    
     return onSnapshot(q, 
       (snapshot) => {
-        const messages = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        callback(messages);
+        const messages = [];
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          // Ensure we don't have duplicate messages
+          const message = {
+            id: doc.id,
+            ...data
+          };
+          messages.push(message);
+        });
+        
+        // Remove duplicates based on timestamp and text
+        const uniqueMessages = messages.filter((message, index, self) =>
+          index === self.findIndex((m) => 
+            m.timestamp === message.timestamp && 
+            m.text === message.text &&
+            m.sender === message.sender
+          )
+        );
+        
+        callback(uniqueMessages);
+        initialLoad = false;
       }, 
       (error) => {
         console.error("Error in chat subscription:", error);

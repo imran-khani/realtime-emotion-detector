@@ -351,13 +351,13 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscree
       timestamp: Date.now()
     };
     
-    // Save to Firebase
+    // Save to Firebase only - let the subscription handle the UI update
     if (sessionId) {
       await saveMessage(newMessage, sessionId);
+    } else {
+      // Only add directly to state if no session (fallback)
+      setMessages(prev => [...prev, { ...newMessage, id: Date.now() }]);
     }
-    
-    // For immediate UI update (will be replaced by subscription)
-    setMessages(prev => [...prev, { ...newMessage, id: Date.now() }]);
   };
 
   const generateResponse = (userMessage, emotion) => {
