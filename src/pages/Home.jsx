@@ -79,24 +79,6 @@ const Home = () => {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Hero Section for First-time Users */}
-        {!currentEmotion && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-8"
-          >
-            <SparklesIcon className="w-12 h-12 mx-auto text-indigo-600 dark:text-indigo-400 mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Welcome to EmotiSense
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Start by allowing camera access to begin real-time emotion detection. 
-              Your journey to better emotional intelligence starts here.
-            </p>
-          </motion.div>
-        )}
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="space-y-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
