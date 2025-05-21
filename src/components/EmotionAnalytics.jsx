@@ -25,9 +25,12 @@ const EmotionAnalytics = ({ emotionHistory }) => {
   const [emotionData, setEmotionData] = useState([]);
   const [dominantEmotion, setDominantEmotion] = useState(null);
   const [emotionTransitions, setEmotionTransitions] = useState([]);
+  const [compressionRatio, setCompressionRatio] = useState(1);
   const chartRef = useRef(null);
 
   // Process emotion data for visualization
+  // Modified to support both original format (with expressions) and
+  // optimized format (with single emotion/confidence entries)
   useEffect(() => {
     if (!emotionHistory.length) return;
 
@@ -52,17 +55,52 @@ const EmotionAnalytics = ({ emotionHistory }) => {
     }
     setEmotionTransitions(transitions.slice(-3));
 
-    // Prepare chart data
-    const chartData = emotionHistory.map(entry => ({
-      timestamp: new Date(entry.timestamp).toLocaleTimeString([], { 
+    // Group emotions by timestamp for chart compatibility
+    const timeGroups = {};
+    
+    emotionHistory.forEach(entry => {
+      // Format the timestamp for display
+      const timeKey = new Date(entry.timestamp).toLocaleTimeString([], { 
         hour: '2-digit', 
         minute: '2-digit',
         second: '2-digit'
-      }),
-      ...entry.expressions
-    }));
-
-    setEmotionData(chartData);
+      });
+      
+      // Initialize the time group if it doesn't exist
+      if (!timeGroups[timeKey]) {
+        timeGroups[timeKey] = {
+          timestamp: timeKey,
+          happy: 0,
+          sad: 0,
+          angry: 0,
+          surprised: 0,
+          fearful: 0,
+          disgusted: 0,
+          neutral: 0
+        };
+      }
+      
+      // Set the emotion value
+      if (entry.expressions) {
+        // Original format with expressions object
+        Object.assign(timeGroups[timeKey], entry.expressions);
+      } else {
+        // Optimized format with just emotion and confidence
+        timeGroups[timeKey][entry.emotion] = entry.confidence;
+      }
+    });
+    
+    // Set compression ratio if we have aggregated data
+    const aggregatedCount = emotionHistory.filter(e => e.isAggregated).length;
+    if (aggregatedCount > 0) {
+      const totalSamples = emotionHistory.reduce((sum, e) => sum + (e.sampleCount || 1), 0);
+      setCompressionRatio(totalSamples / emotionHistory.length);
+    } else {
+      setCompressionRatio(1);
+    }
+    
+    // Convert to array for the chart
+    setEmotionData(Object.values(timeGroups));
   }, [emotionHistory]);
 
   const chartOptions = {
@@ -208,6 +246,18 @@ const EmotionAnalytics = ({ emotionHistory }) => {
               </div>
             )}
           </div>
+          
+          {/* Compression ratio only shown when compression is active */}
+          {compressionRatio > 1.1 && (
+            <div className="mt-3 border-t pt-2 border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500 dark:text-gray-400">Data optimization:</span>
+                <span className="font-medium text-gray-600 dark:text-gray-300">
+                  {compressionRatio.toFixed(1)}x compression
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -237,4 +287,4 @@ const EmotionAnalytics = ({ emotionHistory }) => {
   );
 };
 
-export default EmotionAnalytics; 
+export default EmotionAnalytics;
