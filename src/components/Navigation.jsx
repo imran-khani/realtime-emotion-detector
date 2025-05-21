@@ -21,19 +21,25 @@ const Navigation = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  // Extract username from email or use displayName
+  // Get user's display name with better formatting
   const getUserDisplayName = () => {
-    if (!user) return '';
+    if (!user) return 'User';
     
     // If user has a displayName (from Google auth), use it
     if (user.displayName) {
-      return user.displayName.split(' ')[0]; // First name only
+      return user.displayName; // Use full name from Google
     }
     
-    // Otherwise, extract username from email
-    const email = user.email || '';
-    const username = email.split('@')[0];
-    return username.charAt(0).toUpperCase() + username.slice(1); // Capitalize first letter
+    // If user has a name from FirebaseAuth
+    if (user.providerData && user.providerData[0]) {
+      const providerData = user.providerData[0];
+      if (providerData.displayName) {
+        return providerData.displayName;
+      }
+    }
+    
+    // Otherwise, show "User" as a friendly alternative to the email
+    return 'User';
   };
 
   const navItems = [
@@ -90,7 +96,15 @@ const Navigation = () => {
             {user && (
               <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-200 dark:border-gray-700">
                 <div className="flex items-center space-x-2">
-                  <UserCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                  {user.photoURL ? (
+                    <img 
+                      src={user.photoURL} 
+                      alt="Profile" 
+                      className="w-6 h-6 rounded-full" 
+                    />
+                  ) : (
+                    <UserCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                  )}
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {getUserDisplayName()}
                   </span>
@@ -156,7 +170,15 @@ const Navigation = () => {
               {user && (
                 <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-300 flex items-center space-x-2">
-                    <UserCircleIcon className="w-5 h-5" />
+                    {user.photoURL ? (
+                      <img 
+                        src={user.photoURL} 
+                        alt="Profile" 
+                        className="w-7 h-7 rounded-full" 
+                      />
+                    ) : (
+                      <UserCircleIcon className="w-6 h-6" />
+                    )}
                     <span className="font-medium">{getUserDisplayName()}</span>
                   </div>
                   <button
