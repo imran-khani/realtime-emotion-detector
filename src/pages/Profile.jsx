@@ -1,16 +1,14 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { UserCircleIcon, EnvelopeIcon, KeyIcon, CameraIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { UserCircleIcon, EnvelopeIcon, KeyIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile, updatePassword, updateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const Profile = () => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const fileInputRef = useRef(null);
   
   const [formData, setFormData] = useState({
     displayName: user?.displayName || '',
@@ -20,34 +18,9 @@ const Profile = () => {
     confirmPassword: ''
   });
 
-  const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(user?.photoURL || '');
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        setMessage({ type: 'error', text: 'Photo size must be less than 2MB' });
-        return;
-      }
-      setPhotoFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => setPhotoPreview(e.target.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const uploadPhoto = async () => {
-    if (!photoFile) return user?.photoURL;
-    const storage = getStorage();
-    const photoRef = ref(storage, `profile-photos/${user.uid}`);
-    await uploadBytes(photoRef, photoFile);
-    return await getDownloadURL(photoRef);
   };
 
   const reauthenticate = async () => {
@@ -61,16 +34,10 @@ const Profile = () => {
     setMessage({ type: '', text: '' });
     
     try {
-      let photoURL = user?.photoURL;
-      
-      if (photoFile) {
-        photoURL = await uploadPhoto();
-      }
-      
-      if (formData.displayName !== user?.displayName || photoFile) {
+      // Update display name
+      if (formData.displayName !== user?.displayName) {
         await updateProfile(user, {
-          displayName: formData.displayName,
-          photoURL: photoURL
+          displayName: formData.displayName
         });
       }
       
@@ -99,7 +66,6 @@ const Profile = () => {
         newPassword: '',
         confirmPassword: ''
       }));
-      setPhotoFile(null);
       
     } catch (error) {
       setMessage({ type: 'error', text: error.message });
@@ -117,8 +83,6 @@ const Profile = () => {
       newPassword: '',
       confirmPassword: ''
     });
-    setPhotoFile(null);
-    setPhotoPreview(user?.photoURL || '');
     setMessage({ type: '', text: '' });
   };
 
@@ -163,43 +127,16 @@ const Profile = () => {
             )}
 
             <div className="flex items-center space-x-6 mb-8">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-200 dark:border-gray-700">
-                  {photoPreview ? (
-                    <img src={photoPreview} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <UserCircleIcon className="w-full h-full text-gray-400" />
-                  )}
-                </div>
-                {isEditing && (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute -bottom-2 -right-2 bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-full shadow-lg transition-colors"
-                  >
-                    <CameraIcon className="w-4 h-4" />
-                  </button>
-                )}
+              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-200 dark:border-gray-700">
+                <UserCircleIcon className="w-full h-full text-gray-400" />
               </div>
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                   {user?.displayName || 'User'}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400">{user?.email}</p>
-                {isEditing && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Click camera to change photo (max 2MB)
-                  </p>
-                )}
               </div>
             </div>
-
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handlePhotoChange}
-              accept="image/*"
-              className="hidden"
-            />
 
             <div className="space-y-6">
               <div>
