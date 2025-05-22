@@ -5,69 +5,50 @@ import {
   ChatBubbleLeftRightIcon,
   CalendarDaysIcon,
   ClockIcon,
-  TrashIcon,
   ArrowLeftIcon,
   ChartBarIcon,
   FaceSmileIcon
 } from '@heroicons/react/24/outline';
-import { 
-  getChatSessions,
-  getChatHistory,
-  deleteChatSession,
-  getChatStats
-} from '../utils/chatFirebase';
 
 const ChatHistory = () => {
-  const [sessions, setSessions] = useState([]);
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [sessionMessages, setSessionMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [stats, setStats] = useState({
+    totalMessages: 0,
+    emotionDistribution: {},
+    lastChatTime: null
+  });
 
+  // Load actual chat data from localStorage
   useEffect(() => {
-    loadSessions();
-    loadStats();
-  }, []);
+    const storedMessages = localStorage.getItem('chatMessages');
+    if (storedMessages) {
+      try {
+        const parsedMessages = JSON.parse(storedMessages);
+        setMessages(parsedMessages);
+        
+        // Calculate actual stats from messages
+        const userMessages = parsedMessages.filter(msg => msg.sender === 'user');
+        const emotionCounts = {};
+        
+        userMessages.forEach(msg => {
+          if (msg.emotion) {
+            emotionCounts[msg.emotion] = (emotionCounts[msg.emotion] || 0) + 1;
+          }
+        });
 
-  const loadSessions = async () => {
-    setLoading(true);
-    try {
-      const sessionList = await getChatSessions(20);
-      setSessions(sessionList);
-    } catch (error) {
-      console.error('Error loading sessions:', error);
-    }
-    setLoading(false);
-  };
+        const lastMessage = parsedMessages.length > 0 ? 
+          parsedMessages[parsedMessages.length - 1] : null;
 
-  const loadStats = async () => {
-    try {
-      const chatStats = await getChatStats();
-      setStats(chatStats);
-    } catch (error) {
-      console.error('Error loading stats:', error);
-    }
-  };
-
-  const selectSession = async (session) => {
-    setSelectedSession(session);
-    const messages = await getChatHistory(session.id);
-    setSessionMessages(messages);
-  };
-
-  const handleDeleteSession = async (sessionId) => {
-    const success = await deleteChatSession(sessionId);
-    if (success) {
-      setSessions(sessions.filter(s => s.id !== sessionId));
-      if (selectedSession?.id === sessionId) {
-        setSelectedSession(null);
-        setSessionMessages([]);
+        setStats({
+          totalMessages: parsedMessages.length,
+          emotionDistribution: emotionCounts,
+          lastChatTime: lastMessage ? lastMessage.timestamp : null
+        });
+      } catch (error) {
+        console.error('Error parsing stored messages:', error);
       }
-      setDeleteConfirm(null);
-      loadStats(); // Reload stats after deletion
     }
-  };
+  }, []);
 
   const formatDate = (timestamp) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -106,20 +87,40 @@ const ChatHistory = () => {
           transition={{ duration: 0.6 }}
         >
           {/* Header */}
-          <div className="mb-8">
-            <Link
-              to="/"
-              className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
-            >
-              <ArrowLeftIcon className="h-4 w-4 mr-1" />
-              Back to Home
-            </Link>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Chat History
-            </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
-              View and manage your chat conversations
-            </p>
+          <div className="mb-8 flex justify-between items-start">
+            <div>
+              <Link
+                to="/app"
+                className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
+              >
+                <ArrowLeftIcon className="h-4 w-4 mr-1" />
+                Back to App
+              </Link>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                Chat History
+              </h1>
+              <p className="mt-2 text-gray-600 dark:text-gray-400">
+                View and manage your chat conversations
+              </p>
+            </div>
+            {messages.length > 0 && (
+              <button
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to clear all chat history? This cannot be undone.')) {
+                    localStorage.removeItem('chatMessages');
+                    setMessages([]);
+                    setStats({
+                      totalMessages: 0,
+                      emotionDistribution: {},
+                      lastChatTime: null
+                    });
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+              >
+                Clear History
+              </button>
+            )}
           </div>
 
           {/* Stats Cards */}
@@ -187,173 +188,86 @@ const ChatHistory = () => {
             </div>
           )}
 
-          {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Sessions List */}
-            <div className="lg:col-span-1">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Chat Sessions
-                  </h2>
-                </div>
-                <div className="overflow-hidden">
-                  {loading ? (
-                    <div className="p-4 text-center text-gray-500">
-                      Loading sessions...
-                    </div>
-                  ) : sessions.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500">
-                      No chat sessions found
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {sessions.map((session) => (
-                        <motion.div
-                          key={session.id}
-                          whileHover={{ backgroundColor: 'rgba(0,0,0,0.02)' }}
-                          onClick={() => selectSession(session)}
-                          className={`p-4 cursor-pointer ${
-                            selectedSession?.id === session.id
-                              ? 'bg-indigo-50 dark:bg-indigo-900/20'
-                              : ''
-                          }`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                {formatDate(session.startTime)}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Last active: {formatDate(session.lastActive)}
-                              </p>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteConfirm(session.id);
-                              }}
-                              className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
-                            >
-                              <TrashIcon className="h-4 w-4 text-gray-400" />
-                            </button>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+          {/* Main Content - Chat Messages */}
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                  Chat Messages
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {messages.length > 0 ? `${messages.length} messages in your chat history` : 'No messages yet'}
+                </p>
               </div>
-            </div>
-
-            {/* Messages Display */}
-            <div className="lg:col-span-2">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Messages
-                  </h2>
-                </div>
-                <div className="h-[600px] overflow-y-auto p-4">
-                  {selectedSession ? (
-                    sessionMessages.length > 0 ? (
-                      <div className="space-y-4">
-                        {sessionMessages.map((message) => (
-                          <motion.div
-                            key={message.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`flex ${
-                              message.sender === 'user' ? 'justify-end' : 'justify-start'
+              <div className="h-[600px] overflow-y-auto p-6">
+                {messages.length > 0 ? (
+                  <div className="space-y-6">
+                    {messages.map((message) => (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`flex ${
+                          message.sender === 'user' ? 'justify-end' : 'justify-start'
+                        }`}
+                      >
+                        <div className={`max-w-[70%] ${
+                          message.sender === 'user' ? 'order-1' : 'order-2'
+                        }`}>
+                          <div
+                            className={`rounded-2xl p-4 ${
+                              message.sender === 'user'
+                                ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-br-none'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none'
                             }`}
                           >
-                            <div className={`max-w-[70%] ${
-                              message.sender === 'user' ? 'order-1' : 'order-2'
-                            }`}>
-                              <div
-                                className={`rounded-lg p-3 ${
-                                  message.sender === 'user'
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                                }`}
+                            <p className="text-sm leading-relaxed">{message.text}</p>
+                          </div>
+                          <div className="flex items-center mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{formatMessageTime(message.timestamp)}</span>
+                            {message.emotion && (
+                              <span
+                                className="ml-2 px-2 py-1 rounded-full text-xs font-medium"
+                                style={{
+                                  backgroundColor: emotionColors[message.emotion] + '20',
+                                  color: emotionColors[message.emotion]
+                                }}
                               >
-                                <p className="text-sm">{message.text}</p>
-                              </div>
-                              <div className="flex items-center mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                <span>{formatMessageTime(message.timestamp)}</span>
-                                {message.emotion && (
-                                  <span
-                                    className="ml-2 px-2 py-0.5 rounded-full"
-                                    style={{
-                                      backgroundColor: emotionColors[message.emotion] + '20',
-                                      color: emotionColors[message.emotion]
-                                    }}
-                                  >
-                                    {message.emotion}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                              message.sender === 'user'
-                                ? 'order-2 ml-2 bg-indigo-600'
-                                : 'order-1 mr-2 bg-gray-300 dark:bg-gray-600'
-                            }`}>
-                              <span className="text-xs text-white">
-                                {message.sender === 'user' ? 'U' : 'AI'}
+                                {message.emotion}
                               </span>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center text-gray-500 dark:text-gray-400">
-                        No messages in this session
-                      </div>
-                    )
-                  ) : (
-                    <div className="text-center text-gray-500 dark:text-gray-400">
-                      Select a session to view messages
-                    </div>
-                  )}
-                </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          message.sender === 'user'
+                            ? 'order-2 ml-3 bg-indigo-600'
+                            : 'order-1 mr-3 bg-gray-300 dark:bg-gray-600'
+                        }`}>
+                          <span className="text-sm font-medium text-white">
+                            {message.sender === 'user' ? 'You' : 'AI'}
+                          </span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 dark:text-gray-400 py-12">
+                    <ChatBubbleLeftRightIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium mb-2">No chat history found</p>
+                    <p className="text-sm mb-4">Start chatting with EmotiChat to see your conversation history here</p>
+                    <Link
+                      to="/app/home"
+                      className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                    >
+                      Start Chatting
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </motion.div>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm mx-4"
-          >
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Delete Chat Session?
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              This will permanently delete this chat session and all its messages.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDeleteSession(deleteConfirm)}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg"
-              >
-                Delete
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 };

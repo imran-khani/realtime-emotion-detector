@@ -295,22 +295,18 @@ const FullscreenChat = ({ currentMood, emotionHistory, messages = [], onClose })
     }
   };
 
-  // Add message to chat
-  const addMessage = async (text, sender, emotion) => {
+  // Add message to chat (removed Firebase dependency)
+  const addMessage = (text, sender, emotion) => {
     const newMessage = {
+      id: messageIdCounter,
       text,
       sender,
       emotion,
       timestamp: Date.now()
     };
     
-    // Save to Firebase only - let the subscription handle the UI update
-    if (sessionId) {
-      await saveMessage(newMessage, sessionId);
-    } else {
-      // Only add directly to state if no session (fallback)
-      setMessages(prev => [...prev, { ...newMessage, id: Date.now() }]);
-    }
+    setLocalMessages(prev => [...prev, newMessage]);
+    setMessageIdCounter(prev => prev + 1);
   };
 
   // Format time for display
@@ -348,15 +344,7 @@ const FullscreenChat = ({ currentMood, emotionHistory, messages = [], onClose })
         {/* Chat area */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-3 space-y-3 bg-gray-50 dark:bg-gray-900">
           <AnimatePresence>
-            {loading ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center text-gray-500 dark:text-gray-400 mt-6"
-              >
-                <p className="text-sm">Loading chat history...</p>
-              </motion.div>
-            ) : messages.length === 0 ? (
+            {localMessages.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -367,7 +355,7 @@ const FullscreenChat = ({ currentMood, emotionHistory, messages = [], onClose })
               </motion.div>
             ) : (
               <div className="max-w-3xl mx-auto space-y-3">
-                {messages.map((message) => (
+                {localMessages.map((message) => (
                 <motion.div
                   key={message.id}
                   initial={{ opacity: 0, y: 20 }}

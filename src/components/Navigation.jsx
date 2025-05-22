@@ -96,15 +96,6 @@ const Navigation = () => {
             {user && (
               <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-200 dark:border-gray-700">
                 <div className="flex items-center space-x-2">
-                  {user.photoURL ? (
-                    <img 
-                      src={user.photoURL} 
-                      alt="Profile" 
-                      className="w-6 h-6 rounded-full" 
-                    />
-                  ) : (
-                    <UserCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                  )}
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {getUserDisplayName()}
                   </span>
@@ -170,15 +161,6 @@ const Navigation = () => {
               {user && (
                 <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-300 flex items-center space-x-2">
-                    {user.photoURL ? (
-                      <img 
-                        src={user.photoURL} 
-                        alt="Profile" 
-                        className="w-7 h-7 rounded-full" 
-                      />
-                    ) : (
-                      <UserCircleIcon className="w-6 h-6" />
-                    )}
                     <span className="font-medium">{getUserDisplayName()}</span>
                   </div>
                   <button

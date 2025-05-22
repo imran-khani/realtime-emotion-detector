@@ -196,6 +196,29 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscree
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
+  // Save messages to localStorage whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('chatMessages', JSON.stringify(messages));
+    }
+  }, [messages]);
+
+  // Load messages from localStorage on component mount
+  useEffect(() => {
+    const storedMessages = localStorage.getItem('chatMessages');
+    if (storedMessages && !isChatOpen) {
+      try {
+        const parsedMessages = JSON.parse(storedMessages);
+        if (parsedMessages.length > 0) {
+          setMessages(parsedMessages);
+          setMessageIdCounter(parsedMessages.length + 1);
+        }
+      } catch (error) {
+        console.error('Error loading messages from localStorage:', error);
+      }
+    }
+  }, []);
+
   // Initialize welcome message when chat opens
   useEffect(() => {
     if (isChatOpen && messages.length === 0) {
