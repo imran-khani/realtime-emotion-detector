@@ -2,12 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import FullscreenChat from './FullscreenChat';
-import { 
-  createChatSession, 
-  saveMessage, 
-  subscribeToChatMessages,
-  getChatHistory 
-} from '../utils/chatFirebase';
 
 // Enhanced response system with categories and context
 const CHAT_RESPONSES = {
@@ -184,8 +178,7 @@ const getDefaultEmotion = (emotion) => {
 };
 
 const MODEL_NAME = "gpt-4o-mini";
-// Access environment variables in Vite
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
 const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscreenToggle }) => {
   const [messages, setMessages] = useState([]);
@@ -199,44 +192,34 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscree
     lastResponse: null,
     suggestedActivity: false
   });
-  const [sessionId, setSessionId] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [messageIdCounter, setMessageIdCounter] = useState(1);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
-  const unsubscribeRef = useRef(null);
 
-  // Initialize chat session when component mounts
+  // Initialize welcome message when chat opens
   useEffect(() => {
-    const initializeChat = async () => {
-      setLoading(true);
-      const newSessionId = await createChatSession();
-      if (newSessionId) {
-        setSessionId(newSessionId);
-        
-        // Load previous messages if any
-        const history = await getChatHistory(newSessionId);
-        setMessages(history);
-        
-        // Subscribe to real-time updates
-        unsubscribeRef.current = subscribeToChatMessages(newSessionId, (updatedMessages) => {
-          setMessages(updatedMessages);
-        });
-      }
-      setLoading(false);
-    };
-    
-    initializeChat();
-    
-    // Cleanup on unmount
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
-    };
-  }, []);
+    if (isChatOpen && messages.length === 0) {
+      const welcomeMessage = {
+        id: 0,
+        text: `👋 Hello! I'm EmotiChat, your emotional support assistant. I can see you're feeling ${currentEmotion || 'neutral'} right now. How can I help you today?`,
+        sender: 'ai',
+        emotion: currentEmotion,
+        timestamp: Date.now()
+      };
+      setMessages([welcomeMessage]);
+      setMessageIdCounter(1);
+    }
+  }, [isChatOpen, currentEmotion]);
 
   const generateAIResponse = async (userMessage, emotion) => {
+    console.log('Generating AI response for:', userMessage, 'with emotion:', emotion);
+    
     try {
+      if (!OPENAI_API_KEY) {
+        console.warn('OpenAI API key not found, using fallback response');
+        return getSmartResponse(userMessage, emotion);
+      }
+
       // Create a more detailed emotion context from history
       const emotionContext = analyzeEmotionHistory();
       const emotionDesc = emotionContext ? 
@@ -251,6 +234,7 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscree
           You help users understand and process their emotions in a supportive way. 
           Always be concise, helpful, and considerate of the user's emotional state.
           The user's current emotion based on facial recognition is: ${emotion}.
+          Keep responses to 2-3 sentences maximum.
           ${emotionContext ? `Emotion history context: ${JSON.stringify(emotionContext)}` : ''}`
         },
         {
@@ -278,6 +262,7 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscree
 
       // Extract the response content
       const aiResponse = response.data.choices[0]?.message?.content || '';
+      console.log('AI Response received:', aiResponse);
       return aiResponse || getSmartResponse(userMessage, emotion);
     } catch (error) {
       console.error('AI response error:', error);
@@ -290,8 +275,20 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscree
     e.preventDefault();
     if (!inputMessage.trim()) return;
 
-    // Add user message
-    addMessage(inputMessage, 'user', currentEmotion);
+    console.log('Sending message:', inputMessage);
+
+    // Add user message immediately
+    const userMessage = {
+      id: messageIdCounter,
+      text: inputMessage,
+      sender: 'user',
+      emotion: currentEmotion,
+      timestamp: Date.now()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setMessageIdCounter(prev => prev + 1);
+    
     const userMsg = inputMessage;
     setInputMessage('');
     setShowEmojis(false);
@@ -301,7 +298,7 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscree
 
     try {
       // Simulate a slight delay for better UX even if response is fast
-      await new Promise(resolve => setTimeout(resolve, 700));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Get AI response
       const response = await generateAIResponse(userMsg, currentEmotion);
@@ -313,7 +310,18 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscree
       await new Promise(resolve => setTimeout(resolve, 300));
       
       // Add AI response
-      addMessage(response, 'ai', currentEmotion);
+      const aiMessage = {
+        id: messageIdCounter + 1,
+        text: response,
+        sender: 'ai',
+        emotion: currentEmotion,
+        timestamp: Date.now()
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
+      setMessageIdCounter(prev => prev + 2);
+      
+      console.log('Message exchange completed');
     } catch (error) {
       console.error('Error getting AI response:', error);
       // Hide typing indicator
@@ -323,8 +331,16 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscree
       await new Promise(resolve => setTimeout(resolve, 300));
       
       // Fallback response
-      const fallbackResponse = getSmartResponse(userMsg, currentEmotion);
-      addMessage(fallbackResponse, 'ai', currentEmotion);
+      const fallbackMessage = {
+        id: messageIdCounter + 1,
+        text: getSmartResponse(userMsg, currentEmotion),
+        sender: 'ai',
+        emotion: currentEmotion,
+        timestamp: Date.now()
+      };
+
+      setMessages(prev => [...prev, fallbackMessage]);
+      setMessageIdCounter(prev => prev + 2);
     }
   };
 
@@ -343,21 +359,17 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscree
     }
   };
 
-  const addMessage = async (text, sender, emotion) => {
+  const addMessage = (text, sender, emotion) => {
     const newMessage = {
+      id: messageIdCounter,
       text,
       sender,
       emotion,
       timestamp: Date.now()
     };
     
-    // Save to Firebase only - let the subscription handle the UI update
-    if (sessionId) {
-      await saveMessage(newMessage, sessionId);
-    } else {
-      // Only add directly to state if no session (fallback)
-      setMessages(prev => [...prev, { ...newMessage, id: Date.now() }]);
-    }
+    setMessages(prev => [...prev, newMessage]);
+    setMessageIdCounter(prev => prev + 1);
   };
 
   const generateResponse = (userMessage, emotion) => {
@@ -597,15 +609,7 @@ const ChatInterface = ({ currentEmotion, confidence, emotionHistory, onFullscree
               {/* Chat messages */}
               <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50 dark:bg-gray-900/50">
                 <AnimatePresence>
-                  {loading ? (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="text-center text-gray-500 dark:text-gray-400 mt-6"
-                    >
-                      <p className="text-sm">Loading chat...</p>
-                    </motion.div>
-                  ) : messages.length === 0 ? (
+                  {messages.length === 0 ? (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}

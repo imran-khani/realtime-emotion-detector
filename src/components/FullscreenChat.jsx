@@ -1,13 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { 
-  createChatSession, 
-  saveMessage, 
-  subscribeToChatMessages,
-  getChatHistory,
-  getChatSessions 
-} from '../utils/chatFirebase';
 
 const MODEL_NAME = "gpt-4o-mini";
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
@@ -70,17 +63,14 @@ const COPING_STRATEGIES = {
   ]
 };
 
-const FullscreenChat = ({ currentMood, emotionHistory, onClose }) => {
-  const [messages, setMessages] = useState([]);
+const FullscreenChat = ({ currentMood, emotionHistory, messages = [], onClose }) => {
+  const [localMessages, setLocalMessages] = useState(messages);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
   const [showEmojis, setShowEmojis] = useState(false);
-  const hasInitialized = useRef(false);
-  const [sessionId, setSessionId] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const unsubscribeRef = useRef(null);
+  const [messageIdCounter, setMessageIdCounter] = useState(messages.length + 1);
   
   // Handle key press for sending messages with Enter
   const handleKeyPress = (e) => {
@@ -90,53 +80,21 @@ const FullscreenChat = ({ currentMood, emotionHistory, onClose }) => {
     }
   };
   
-  // Initialize chat - removed automatic welcome message
+  // Update local messages when props change
   useEffect(() => {
-    const initializeChat = async () => {
-      setLoading(true);
-      
-      // Get the most recent session or create a new one
-      const sessions = await getChatSessions(1);
-      let activeSessionId;
-      
-      if (sessions.length > 0 && sessions[0].lastActive > Date.now() - 30 * 60 * 1000) { // Last 30 minutes
-        activeSessionId = sessions[0].id;
-      } else {
-        activeSessionId = await createChatSession();
-      }
-      
-      if (activeSessionId) {
-        setSessionId(activeSessionId);
-        
-        // Load chat history
-        const history = await getChatHistory(activeSessionId);
-        setMessages(history);
-        
-        // Subscribe to real-time updates
-        unsubscribeRef.current = subscribeToChatMessages(activeSessionId, (updatedMessages) => {
-          setMessages(updatedMessages);
-        });
-      }
-      
-      setLoading(false);
-    };
-    
-    initializeChat();
-    // Focus on input when component mounts
+    setLocalMessages(messages);
+    setMessageIdCounter(messages.length + 1);
+  }, [messages]);
+
+  // Focus on input when component mounts
+  useEffect(() => {
     inputRef.current?.focus();
-    
-    // Cleanup on unmount
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
-    };
   }, []);
   
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [localMessages]);
   
   // Analyze emotion history to provide context
   const analyzeEmotionHistory = () => {
@@ -274,7 +232,17 @@ const FullscreenChat = ({ currentMood, emotionHistory, onClose }) => {
     if (!inputMessage.trim()) return;
 
     // Add user message
-    addMessage(inputMessage, 'user', currentMood);
+    const userMessage = {
+      id: messageIdCounter,
+      text: inputMessage,
+      sender: 'user',
+      emotion: currentMood,
+      timestamp: Date.now()
+    };
+
+    setLocalMessages(prev => [...prev, userMessage]);
+    setMessageIdCounter(prev => prev + 1);
+    
     const userMsg = inputMessage;
     setInputMessage('');
 
@@ -295,7 +263,16 @@ const FullscreenChat = ({ currentMood, emotionHistory, onClose }) => {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       // Add AI response
-      addMessage(response, 'ai', currentMood);
+      const aiMessage = {
+        id: messageIdCounter + 1,
+        text: response,
+        sender: 'ai',
+        emotion: currentMood,
+        timestamp: Date.now()
+      };
+
+      setLocalMessages(prev => [...prev, aiMessage]);
+      setMessageIdCounter(prev => prev + 2);
     } catch (error) {
       console.error('Error getting AI response:', error);
       // Hide typing indicator
@@ -305,7 +282,16 @@ const FullscreenChat = ({ currentMood, emotionHistory, onClose }) => {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       // Fallback response
-      addMessage("I'm here to support you. Let's talk about how you're feeling or try an activity that might help.", 'ai', currentMood);
+      const fallbackMessage = {
+        id: messageIdCounter + 1,
+        text: "I'm here to support you. Let's talk about how you're feeling or try an activity that might help.",
+        sender: 'ai',
+        emotion: currentMood,
+        timestamp: Date.now()
+      };
+
+      setLocalMessages(prev => [...prev, fallbackMessage]);
+      setMessageIdCounter(prev => prev + 2);
     }
   };
 
