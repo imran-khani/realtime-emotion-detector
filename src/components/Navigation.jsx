@@ -46,6 +46,7 @@ const Navigation = () => {
     { path: '/app/home', label: 'Home', icon: HomeIcon },
     { path: '/app/dashboard', label: 'Dashboard', icon: ChartBarIcon },
     { path: '/app/chat-history', label: 'Chat History', icon: ChatBubbleLeftRightIcon },
+    { path: '/app/profile', label: 'Profile', icon: UserCircleIcon },
     { path: '/app/about', label: 'About', icon: InformationCircleIcon },
   ];
 

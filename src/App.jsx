@@ -12,6 +12,7 @@ import LandingPage from './components/LandingPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ChatHistory from './pages/ChatHistory';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
               <Route path="home" element={<Home />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="chat-history" element={<ChatHistory />} />
+              <Route path="profile" element={<Profile />} />
               <Route path="about" element={<About />} />
               <Route path="privacy" element={<PrivacyPolicy />} />
               <Route path="terms" element={<TermsOfService />} />
